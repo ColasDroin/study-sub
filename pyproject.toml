@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "study-sub"
+version = "0.1.0"
+description = "A tool to programmatically submit parametric studies to HPC clusters."
+authors = ["Colas Droin <colasdroin@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+numpy = "^1.26.4"
+study-gen = "^0.3.0"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
