@@ -9,6 +9,7 @@ readme = "README.md"
 python = "^3.11"
 numpy = "^1.26.4"
 study-gen = "^0.3.0"
+filelock = "^3.13.1"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.0.0"
