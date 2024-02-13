@@ -1,15 +1,25 @@
 base:
   some_dummy_computations:
     file: study_dummy/base/some_dummy_computations.py
+    context: 3
+    submission_type: 1
   a_1.0_b_1:
     some_more_computations:
       file: study_dummy/base/a_1.0_b_1/some_more_computations.py
+      context: 2
+      submission_type: 2
   a_1.0_b_2:
     some_more_computations:
       file: study_dummy/base/a_1.0_b_2/some_more_computations.py
+      context: 1
+      submission_type: 1
   a_2.0_b_1:
     some_more_computations:
       file: study_dummy/base/a_2.0_b_1/some_more_computations.py
+      context: 1
+      submission_type: 1
   a_2.0_b_2:
     some_more_computations:
       file: study_dummy/base/a_2.0_b_2/some_more_computations.py
+      context: 1
+      submission_type: 1
