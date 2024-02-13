@@ -64,7 +64,8 @@ class StudySub:
         }
         dict_gen["submission_type"] = dict_submission_type[submission_type]
 
-    def ask_keep_setting(self: Self) -> bool:
+    @staticmethod
+    def ask_keep_setting() -> bool:
         keep_setting = input(
             "Do you want to keep the same setting for identical files? (y/n). Default is y."
         )
@@ -74,7 +75,8 @@ class StudySub:
             keep_setting = "y"
         return keep_setting == "y"
 
-    def ask_skip_configured_files(self: Self) -> bool:
+    @staticmethod
+    def ask_skip_configured_files() -> bool:
         skip_configured_files = input(
             "Some files to submit seem to be configured already. Do you want to skip them? (y/n). Default is y."
         )
