@@ -35,7 +35,9 @@ class StudySub:
                     raise ValueError
             except ValueError:
                 print("Invalid input. Please enter a number between 1 and 3.")
-        dict_gen["context"] = context
+
+        dict_context = {1: "cpu", 2: "cupy", 3: "opencl"}
+        dict_gen["context"] = dict_context[context]
 
     @staticmethod
     def ask_and_set_run_on(dict_gen: dict[str, Any]):
@@ -52,7 +54,15 @@ class StudySub:
                     raise ValueError
             except ValueError:
                 print("Invalid input. Please enter a number between 1 and 5.")
-        dict_gen["submission_type"] = submission_type
+
+        dict_submission_type = {
+            1: "local",
+            2: "htc",
+            3: "htc_docker",
+            4: "slurm",
+            5: "slurm_docker",
+        }
+        dict_gen["submission_type"] = dict_submission_type[submission_type]
 
     def ask_keep_setting(self: Self) -> bool:
         keep_setting = input(
