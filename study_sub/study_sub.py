@@ -11,6 +11,7 @@ from study_gen._nested_dicts import nested_get
 
 # Local imports
 from .config_utils import ConfigJobs
+from .dependency_graph import DependencyGraph
 from .dict_yaml_utils import load_yaml, write_yaml
 from .generate_run import generate_run_file
 
@@ -109,18 +110,26 @@ class StudySub:
             with open(f"{absolute_job_folder}/run.sh", "w") as f:
                 f.write(run_str)
 
-    def get_job_status(self: Self, l_keys: list[str], dic_tree=None):
+    def get_job_status(self: Self, l_keys: list[str], dic_tree: bool | None = None):
         # Using dic_tree as an argument allows to avoid reloading it
         if dic_tree is None:
             dic_tree = self.dic_tree
         # Return the job status
         return nested_get(dic_tree, l_keys + ["status"])
 
-    def submit(self: Self):
+    def submit(self: Self, one_generation_at_a_time: bool = False):
         dic_all_jobs = self.get_all_jobs()
+        # Get dic tree once to avoid reloading it for every job
         dic_tree = self.dic_tree
-        for job in dic_all_jobs:
-            l_keys = dic_all_jobs[job]["l_keys"]
-            # Passing the dic_tree as an argument to avoid reloading it
-            status = self.get_job_status(l_keys, dic_tree)
-            print(status)
+
+        # Collect dict of list of unfinished jobs for every tree branch and every gen
+        dic_to_submit = {}
+        DependencyGraph(dic_tree, dic_all_jobs).build_dependency_graph()
+        # for job in dic_all_jobs:
+        #     l_keys = dic_all_jobs[job]["l_keys"]
+        #     gen = dic_all_jobs[job]["gen"]
+        #     status = self.get_job_status(l_keys, dic_tree)
+        #     if status != "finished":
+        #         if self.get_job_status(l_keys, dic_tree)
+
+        #

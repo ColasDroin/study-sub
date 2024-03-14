@@ -1,6 +1,3 @@
-Log that the job is over using my package -> need to access the tree with nested dict and update the status of the job
-
-
 Make the generate run recursive and not dependent on the generation
 Handle singularity and docker images
 Add rm statement at the end of sh run files

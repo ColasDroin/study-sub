@@ -7,4 +7,3 @@ python some_more_computations.py > output_python.txt 2> error_python.txt
 if [ $? -eq 0 ]; then
     python -m study_sub.log_finish /Users/cdroin/Desktop/study-sub/example_study/study_dummy/tree.yaml base a_1.0_b_2 some_more_computations
 fi
-    
