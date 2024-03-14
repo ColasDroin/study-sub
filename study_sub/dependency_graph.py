@@ -2,11 +2,9 @@
 # --- Imports
 # ==================================================================================================
 # Standard library imports
-import os
 from typing import Self
 
 # Third party imports
-from rich import print
 from study_gen._nested_dicts import nested_get
 
 # Local imports

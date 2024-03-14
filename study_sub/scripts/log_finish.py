@@ -9,7 +9,7 @@ from filelock import SoftFileLock
 from study_gen._nested_dicts import nested_set
 
 # Local imports
-from .dict_yaml_utils import load_yaml, write_yaml
+from ..utils.dict_yaml_utils import load_yaml, write_yaml
 
 # ==================================================================================================
 # --- Script

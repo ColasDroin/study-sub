@@ -5,5 +5,5 @@ python some_dummy_computations.py > output_python.txt 2> error_python.txt
 
 # Ensure job run was successful and tag as finished
 if [ $? -eq 0 ]; then
-    python -m study_sub.log_finish /Users/cdroin/Desktop/study-sub/example_study/study_dummy/tree.yaml base some_dummy_computations
+    python -m study_sub.scripts.log_finish /Users/cdroin/Desktop/study-sub/example_study/study_dummy/tree.yaml base some_dummy_computations
 fi

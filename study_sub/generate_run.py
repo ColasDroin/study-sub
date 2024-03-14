@@ -20,7 +20,7 @@ def generate_run_file(
     file_str += f"""
 # Ensure job run was successful and tag as finished
 if [ $? -eq 0 ]; then
-    python -m study_sub.log_finish {tree_path} {' '.join(l_keys)}
+    python -m study_sub.scripts.log_finish {tree_path} {' '.join(l_keys)}
 fi
 """
 
