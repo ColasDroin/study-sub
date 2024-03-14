@@ -1,30 +1,38 @@
 base:
   some_dummy_computations:
     file: study_dummy/base/some_dummy_computations.py
-    context: cpu
-    submission_type: local
+    context: opencl
+    submission_type: htc_docker
+    htc_flavor: longlunch
     status: to_submit
   a_1.0_b_1:
     some_more_computations:
       file: study_dummy/base/a_1.0_b_1/some_more_computations.py
-      context: cpu
-      submission_type: local
+      context: opencl
+      submission_type: htc_docker
+      htc_flavor: longlunch
       status: to_submit
   a_1.0_b_2:
     some_more_computations:
       file: study_dummy/base/a_1.0_b_2/some_more_computations.py
-      context: cpu
-      submission_type: local
+      context: opencl
+      submission_type: htc_docker
       status: to_submit
+      htc_flavor: longlunch
   a_2.0_b_1:
     some_more_computations:
       file: study_dummy/base/a_2.0_b_1/some_more_computations.py
-      context: cpu
-      submission_type: local
+      context: opencl
+      submission_type: htc_docker
       status: to_submit
+      htc_flavor: longlunch
   a_2.0_b_2:
     some_more_computations:
       file: study_dummy/base/a_2.0_b_2/some_more_computations.py
-      context: cpu
-      submission_type: local
+      context: opencl
+      submission_type: htc_docker
       status: to_submit
+      htc_flavor: longlunch
+python_environment: /Users/cdroin/Desktop/study-sub/.venv
+container_image:
+absolute_path: /Users/cdroin/Desktop/study-sub/example_study/study_dummy/tree.yaml

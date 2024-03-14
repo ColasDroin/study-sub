@@ -521,3 +521,75 @@ class ClusterSubmission:
         else:
             print("Querying jobs are not implemented yet for this submission mode")
         return l_jobs
+
+
+# ==================================================================================================
+# --- Main submission function
+# ==================================================================================================
+def submit_jobs_generation(root, generation=1):
+    # Define a dictionnary that associates a name to each generation number
+    dic_int_to_str = {1: "first", 2: "second", 3: "third", 4: "fourth", 5: "fifth"}
+    if generation not in dic_int_to_str:
+        raise (f"Error: Generation {generation} is not implemented")
+
+    # Submit all the pending jobs of a given generation
+    config_generation = root.parameters["generations"][f"{generation}"]
+    cluster_submission = ClusterSubmission(config_generation, root.get_abs_path())
+    path_file = f"submission_files/{dic_int_to_str[generation]}_generation.sub"
+    l_filenames, l_path_jobs = cluster_submission.write_sub_files(
+        root.generation(generation), path_file
+    )
+    cluster_submission.submit(l_filenames, l_path_jobs)
+
+
+def submit_jobs(study_name, print_uncompleted_jobs=False):
+    # Add suffix to the root node path to handle scans that are not in the root directory
+    fix = f"/scans/{study_name}"
+    root = tree_maker.tree_from_json(fix[1:] + "/tree_maker.json")
+    root.add_suffix(suffix=fix)
+
+    # Check that the study is not done yet
+    if root.has_been("completed"):
+        print("All descendants of root are completed!")
+    else:
+        # Check generation 1
+        gen_1_completed = all([node.has_been("completed") for node in root.generation(1)])
+        if not gen_1_completed:
+            print("######## Taking care of generation 1 ########")
+            submit_jobs_generation(root, generation=1)
+        else:
+            print("Generation 1 is already completed.")
+
+        # Check generation 2
+        gen_2_completed = all([node.has_been("completed") for node in root.generation(2)])
+        if gen_1_completed and not gen_2_completed:
+            print("######## Taking care of generation 2 ########")
+            submit_jobs_generation(root, generation=2)
+        else:
+            if not gen_1_completed:
+                pass
+            else:
+                print("Generation 2 is already completed.")
+
+        # We assume there's no generation 3
+        if all([descendant.has_been("completed") for descendant in root.descendants]):
+            root.tag_as("completed")
+            print("All descendants of root are completed!")
+
+        # Print remaining jobs
+        if print_uncompleted_jobs:
+            for descendant in root.descendants:
+                if descendant.has_not_been("completed"):
+                    print("To be completed: " + descendant.get_abs_path())
+
+
+# ==================================================================================================
+# --- Submission
+# ==================================================================================================
+# Load the tree from a yaml and submit the jobs that haven't been completed yet
+if __name__ == "__main__":
+    # Define study
+    study_name = "example_tunescan"
+
+    # Submit jobs
+    submit_jobs(study_name)

@@ -1,0 +1,2 @@
+Make the generate run recursive and not dependent on the generation
+Handle singularity and docker images

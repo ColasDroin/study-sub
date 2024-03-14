@@ -26,6 +26,33 @@ def ask_and_set_context(dic_gen: dict[str, Any]):
     dic_gen["context"] = dict_context[context]
 
 
+def ask_and_set_htc_flavour(dic_gen: dict[str, Any]):
+    while True:
+        try:
+            submission_type = input(
+                f"What type of htc job flavour do you want to use for job {dic_gen['file']}?"
+                " 1: espresso, 2: microcentury, 3: longlunch, 4: workday, 5: tomorrow, 6: testmatch, 7: nextweek. Default is espresso."
+            )
+            submission_type = 1 if submission_type == "" else int(submission_type)
+            if submission_type in range(1, 8):
+                break
+            else:
+                raise ValueError
+        except ValueError:
+            print("Invalid input. Please enter a number between 1 and 7.")
+
+    dict_flavour_type = {
+        1: "espresso",
+        2: "microcentury",
+        3: "longlunch",
+        4: "workday",
+        5: "tomorrow",
+        6: "testmatch",
+        7: "nextweek",
+    }
+    dic_gen["htc_flavor"] = dict_flavour_type[submission_type]
+
+
 def ask_and_set_run_on(dic_gen: dict[str, Any]):
     while True:
         try:
@@ -75,9 +102,9 @@ def ask_skip_configured_jobs() -> bool:
 
 
 class ConfigJobs:
-    def __init__(self, dict_tree: dict):
+    def __init__(self, dic_tree: dict):
         # Load the corresponding yaml as dicts
-        self.dict_tree = dict_tree
+        self.dic_tree = dic_tree
 
     def _find_and_configure_jobs_recursion(
         self: Self,
@@ -135,19 +162,22 @@ class ConfigJobs:
                     # Set context and run_on
                     ask_and_set_context(dic_gen)
                     ask_and_set_run_on(dic_gen)
-                    dic_gen["status"] = status = "to_submit"
+                    if dic_gen["submission_type"] in ["htc", "htc_docker"]:
+                        ask_and_set_htc_flavour(dic_gen)
+                    else:
+                        dic_gen["htc_flavor"] = None
+                    dic_gen["status"] = "to_submit"
                     if ask_keep_setting():
                         self.dic_config_jobs[job_name] = {
                             "context": dic_gen["context"],
                             "submission_type": dic_gen["submission_type"],
-                            "status": status,
+                            "status": dic_gen["status"],
+                            "htc_flavor": dic_gen["htc_flavor"],
                         }
 
-                # If the job is already in the dict, set the previous context and run_on
                 else:
-                    dic_gen["context"] = self.dic_config_jobs[job_name]["context"]
-                    dic_gen["submission_type"] = self.dic_config_jobs[job_name]["submission_type"]
-                    dic_gen["status"] = self.dic_config_jobs[job_name]["status"]
+                    # Merge the configuration of the job with the existing one
+                    dic_gen |= self.dic_config_jobs[job_name]
 
     def find_and_configure_jobs(self: Self):
         # Variables to store the jobs and their configuration
@@ -155,14 +185,14 @@ class ConfigJobs:
         self.dic_all_jobs = {}
         self.skip_configured_jobs = None
 
-        self._find_and_configure_jobs_recursion(self.dict_tree, depth=-1, find_only=False)
+        self._find_and_configure_jobs_recursion(self.dic_tree, depth=-1, find_only=False)
 
-        return self.dic_all_jobs, self.dic_config_jobs
+        return self.dic_tree
 
     def find_all_jobs(self: Self):
         # Variables to store the jobs and their configuration
         self.dic_all_jobs = {}
 
-        self._find_and_configure_jobs_recursion(self.dict_tree, depth=-1, find_only=True)
+        self._find_and_configure_jobs_recursion(self.dic_tree, depth=-1, find_only=True)
 
         return self.dic_all_jobs
