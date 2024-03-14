@@ -8,10 +8,23 @@ import yaml
 # ==================================================================================================
 # --- Functions
 # ==================================================================================================
-def generate_run_file(job_folder, job_name, setup_env_script, generation_number, htc=False):
-    if htc:
-        return _generate_run_file_htc(job_folder, job_name, setup_env_script, generation_number)
-    return _generate_run_file(job_folder, job_name, setup_env_script)
+def generate_run_file(
+    job_folder, job_name, setup_env_script, generation_number, tree_path, l_keys, htc=False
+):
+    # if htc:
+    #     file_str = _generate_run_file_htc(job_folder, job_name, setup_env_script, generation_number)
+    # else:
+    file_str = _generate_run_file(job_folder, job_name, setup_env_script)
+
+    # Tag the job as finished with all keys from l_keys
+    file_str += f"""
+# Ensure job run was successful and tag as finished
+if [ $? -eq 0 ]; then
+    python -m study_sub.log_finish {tree_path} {' '.join(l_keys)}
+fi
+"""
+
+    return file_str
 
 
 def _generate_run_file(job_folder, job_name, setup_env_script):
@@ -20,23 +33,22 @@ def _generate_run_file(job_folder, job_name, setup_env_script):
         + f"source {setup_env_script}\n"
         + f"cd {job_folder}\n"
         + f"python {job_name} > output_python.txt 2> error_python.txt\n"
-        
     )
 
 
-def _generate_run_file_htc(job_folder, job_name, setup_env_script, generation_number):
-    if generation_number == 1:
-        # No need to move to HTC as gen 1 is never IO intensive
-        return _generate_run_file(job_folder, job_name, setup_env_script)
-    if generation_number == 2:
-        raise ValueError("Generation 2 htc submission is not supported yet...")
-        # return _generate_run_sh_htc_gen_2(job_folder, job_name, setup_env_script)
-    if generation_number >= 3:
-        print(
-            f"Generation {generation_number} local htc submission is not supported yet..."
-            " Submitting as for generation 1"
-        )
-        return _generate_run_file(job_folder, job_name, setup_env_script)
+# def _generate_run_file_htc(job_folder, job_name, setup_env_script, generation_number):
+#     if generation_number == 1:
+#         # No need to move to HTC as gen 1 is never IO intensive
+#         return _generate_run_file(job_folder, job_name, setup_env_script)
+#     if generation_number == 2:
+#         raise ValueError("Generation 2 htc submission is not supported yet...")
+#         # return _generate_run_sh_htc_gen_2(job_folder, job_name, setup_env_script)
+#     if generation_number >= 3:
+#         print(
+#             f"Generation {generation_number} local htc submission is not supported yet..."
+#             " Submitting as for generation 1"
+#         )
+#         return _generate_run_file(job_folder, job_name, setup_env_script)
 
 
 # ! THIS CODE IS NOT UP TO DATE AND WILL NOT WORK

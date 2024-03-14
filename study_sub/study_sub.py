@@ -7,10 +7,9 @@ from typing import Self
 
 # Third party imports
 from filelock import SoftFileLock
-
-# Local imports
 from study_gen._nested_dicts import nested_get
 
+# Local imports
 from .config_utils import ConfigJobs
 from .dict_yaml_utils import load_yaml, write_yaml
 from .generate_run import generate_run_file
@@ -28,6 +27,9 @@ class StudySub:
     ):
         # Path to study files
         self.path_tree = path_tree
+
+        # Absolute path to the tree
+        self.abs_path_tree = os.path.abspath(path_tree)
 
         # Name of the study folder
         self.study_name = os.path.dirname(path_tree)
@@ -99,6 +101,8 @@ class StudySub:
                 job_name,
                 self.path_python_environment,
                 generation_number,
+                self.abs_path_tree,
+                l_keys,
                 htc="htc" in nested_get(dic_tree, l_keys + ["submission_type"]),
             )
             # Write the run file
