@@ -23,9 +23,9 @@ class DependencyGraph:
     ):
         self.dic_tree = dic_tree
         self.dic_all_jobs = dic_all_jobs
-
-    def build_dependency_graph(self):
         self.dependency_graph = {}
+
+    def build_full_dependency_graph(self: Self):
         self.set_l_keys = {
             tuple(self.dic_all_jobs[job]["l_keys"][:-1]) for job in self.dic_all_jobs
         }
@@ -41,5 +41,21 @@ class DependencyGraph:
                     for name_parent, sub_dict in parent.items():
                         if "file" in sub_dict:
                             self.dependency_graph[job].add(sub_dict["file"])
+        return self.dependency_graph
 
-        print(self.dependency_graph)
+    def get_unfinished_dependency(self, job: str):
+        # Ensure the dependency graph is built
+        if self.dependency_graph == {}:
+            self.build_full_dependency_graph()
+
+        # Get the list of dependencies
+        l_dependencies = self.dependency_graph[job]
+
+        # Get the corresponding list of l_keys
+        ll_keys = [self.dic_all_jobs[dep]["l_keys"] for dep in l_dependencies]
+
+        return [
+            dep
+            for dep, l_keys in zip(l_dependencies, ll_keys)
+            if nested_get(self.dic_tree, l_keys + ["status"]) != "finished"
+        ]

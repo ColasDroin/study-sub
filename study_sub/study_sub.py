@@ -124,12 +124,13 @@ class StudySub:
 
         # Collect dict of list of unfinished jobs for every tree branch and every gen
         dic_to_submit = {}
-        DependencyGraph(dic_tree, dic_all_jobs).build_dependency_graph()
-        # for job in dic_all_jobs:
-        #     l_keys = dic_all_jobs[job]["l_keys"]
-        #     gen = dic_all_jobs[job]["gen"]
-        #     status = self.get_job_status(l_keys, dic_tree)
-        #     if status != "finished":
-        #         if self.get_job_status(l_keys, dic_tree)
+        for job in dic_all_jobs:
+            # ! This hasn't been debuged properly for n_gen > 2
+            l_dep = DependencyGraph(dic_tree, dic_all_jobs).get_unfinished_dependency(job)
+            if len(l_dep) == 0:
+                gen = dic_all_jobs[job]["gen"]
+                if gen not in dic_to_submit:
+                    dic_to_submit[gen] = []
+                dic_to_submit[gen].append(job)
 
         #
