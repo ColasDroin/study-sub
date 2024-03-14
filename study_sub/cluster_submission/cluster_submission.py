@@ -2,24 +2,32 @@
 # --- Imports
 # ==================================================================================================
 import copy
+
+# Standard library imports
 import os
 import subprocess
-import time
 from pathlib import Path
+from typing import Self
 
 import psutil
-import yaml
+
+# Third party imports
+from study_gen._nested_dicts import nested_get
+
+# Local imports
+from .submission_statements import HTC, HTCDocker, LocalPC, Slurm, SlurmDocker
 
 
 # ==================================================================================================
 # --- Class for job submission
 # ==================================================================================================
 class ClusterSubmission:
-    def __init__(self, l_jobs_to_submit: list[str], dic_all_jobs: dict, dic_tree: dict):
+    def __init__(self: Self, l_jobs_to_submit: list[str], dic_all_jobs: dict, dic_tree: dict):
         self.l_jobs_to_submit = l_jobs_to_submit
         self.dic_all_jobs = dic_all_jobs
         self.dic_tree = dic_tree
 
+        # TODO
         # ! Adapt this piece of code where it is needed
         # # GPU configuration (for HTC)
         # if config["context"] in ["cupy", "opencl"] and self.run_on in [
@@ -34,6 +42,7 @@ class ClusterSubmission:
         #     self.request_GPUs = 0
         #     self.slurm_queue_statement = "#SBATCH --partition=slurm_hpc_acc"
 
+        # TODO
         # ! Also adapt this piece of code where it is needed
         # # Path to singularity image
         # if "container_image" in self.dic_tree:
@@ -51,11 +60,16 @@ class ClusterSubmission:
     # Getter for dic_id_to_job
     @property
     def dic_id_to_job(self):
-        if os.path.isfile(self.path_dic_id_to_job):
-            with open(self.path_dic_id_to_job, "r") as fid:
-                return yaml.load(fid, Loader=yaml.FullLoader)
-        else:
-            return None
+        dic_id_to_job = {}
+        found_at_least_one = False
+        for job in self.l_jobs_to_submit:
+            l_keys = self.dic_all_jobs[job]["l_keys"]
+            subdic_job = nested_get(self.dic_tree, l_keys)
+            if "id_sub" in subdic_job:
+                dic_id_to_job[subdic_job["id_sub"]] = job
+                found_at_least_one = True
+
+        return dic_id_to_job if found_at_least_one else None
 
     # Setter for dic_id_to_job
     @dic_id_to_job.setter
@@ -64,12 +78,18 @@ class ClusterSubmission:
         # Ensure all ids are integers
         dic_id_to_job = {int(id_job): job for id_job, job in dic_id_to_job.items()}
 
-        # Write on disk
-        with open(self.path_dic_id_to_job, "w") as fid:
-            yaml.dump(dic_id_to_job, fid)
+        # Update the tree
+        for job in self.l_jobs_to_submit:
+            l_keys = self.dic_all_jobs[job]["l_keys"]
+            subdic_job = nested_get(self.dic_tree, l_keys)
+            if "id_sub" in subdic_job and subdic_job["id_sub"] not in dic_id_to_job:
+                del subdic_job["id_sub"]
+            elif "id_sub" not in subdic_job and subdic_job["id_sub"] in dic_id_to_job:
+                subdic_job["id_sub"] = dic_id_to_job[subdic_job["id_sub"]]
+            # Else all is consistent
 
-        # Wait 0.5s to make sure the file is written on disk
-        time.sleep(0.5)
+        # TODO
+        # ! Ensure that modifying subdic modify the dic_tree
 
     def _update_dic_id_to_job(self, running_jobs, queuing_jobs):
         # Look for jobs in the dictionnary that are not running or queuing anymore
@@ -80,7 +100,7 @@ class ClusterSubmission:
                 if job not in set_current_jobs:
                     del dic_id_to_job[id_job]
 
-            # Update (write on disk) dic_id_to_job
+            # Update dic_id_to_job
             self.dic_id_to_job = dic_id_to_job
 
     def _get_state_jobs(self, dic_id_to_job=None, verbose=True):
@@ -94,6 +114,8 @@ class ClusterSubmission:
             print("queuing: \n" + "\n".join(queuing_jobs))
         return running_jobs, queuing_jobs
 
+    # TODO
+    # ! Keep going from here
     @staticmethod
     def _get_path_job(path_node):
         path_job = copy.copy(path_node)
@@ -137,7 +159,7 @@ class ClusterSubmission:
                 # Write the submission files
                 print(f'Writing submission file for node "{path_node}"')
                 with open(filename_node, "w") as fid:
-                    # Careful, I implemented a fix for path due to the temporary home recovery folder
+                    # ! Careful, I implemented a fix for path due to the temporary home recovery folder
                     to_replace = "/storage-hpc/gpfs_data/HPC/home_recovery"
                     replacement = "/home/HPC"
                     fixed_path = path_node.replace(to_replace, replacement)

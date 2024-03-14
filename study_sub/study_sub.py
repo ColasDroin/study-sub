@@ -7,7 +7,6 @@ from typing import Self
 
 # Third party imports
 from filelock import SoftFileLock
-from rich import print
 from study_gen._nested_dicts import nested_get
 
 from .dependency_graph import DependencyGraph
@@ -151,3 +150,5 @@ class StudySub:
         #     root.generation(generation), path_file
         # )
         # cluster_submission.submit(l_filenames, l_path_jobs)
+
+        # ! One must update dic_tree from the dic_tree of cluster_submission after submission
