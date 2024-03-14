@@ -7,6 +7,7 @@ from typing import Self
 
 # Third party imports
 from filelock import SoftFileLock
+from rich import print
 from study_gen._nested_dicts import nested_get
 
 from .dependency_graph import DependencyGraph
@@ -60,7 +61,7 @@ class StudySub:
             self.path_container_image = path_container_image
 
         # Lock file to avoid concurrent access (softlock as several platforms are used)
-        self.lock = SoftFileLock(f"{self.path_tree}.lock", timeout=5)
+        self.lock = SoftFileLock(f"{self.path_tree}.lock", timeout=30)
 
     # dic_tree as a property so that it is reloaded every time it is accessed
     @property
@@ -124,14 +125,34 @@ class StudySub:
         dic_tree = self.dic_tree
 
         # Collect dict of list of unfinished jobs for every tree branch and every gen
-        dic_to_submit = {}
+        dic_to_submit_by_gen = {}
         for job in dic_all_jobs:
             # ! This hasn't been debuged properly for n_gen > 2
             l_dep = DependencyGraph(dic_tree, dic_all_jobs).get_unfinished_dependency(job)
             if len(l_dep) == 0:
                 gen = dic_all_jobs[job]["gen"]
-                if gen not in dic_to_submit:
-                    dic_to_submit[gen] = []
-                dic_to_submit[gen].append(job)
+                if gen not in dic_to_submit_by_gen:
+                    dic_to_submit_by_gen[gen] = []
+                dic_to_submit_by_gen[gen].append(job)
 
-        #
+        # Only keep the topmost generation if one_generation_at_a_time is True
+        if one_generation_at_a_time:
+            max_gen = max(dic_to_submit_by_gen.keys())
+            dic_to_submit_by_gen = {max_gen: dic_to_submit_by_gen[max_gen]}
+
+        # Convert dic_to_submit_by_gen to contain all requested information
+        dic_to_submit = {}
+        for dic_gen in dic_to_submit_by_gen.values():
+            for job in dic_gen:
+                dic_to_submit[job] = nested_get(dic_tree, dic_all_jobs[job]["l_keys"])
+
+        print(dic_to_submit)
+
+        # # ! Fix this code
+        # config_generation = root.parameters["generations"][f"{generation}"]
+        # cluster_submission = ClusterSubmission(config_generation, root.get_abs_path())
+        # path_file = f"submission_files/{dic_int_to_str[generation]}_generation.sub"
+        # l_filenames, l_path_jobs = cluster_submission.write_sub_files(
+        #     root.generation(generation), path_file
+        # )
+        # cluster_submission.submit(l_filenames, l_path_jobs)

@@ -20,7 +20,7 @@ tree_path = sys.argv[1]
 l_keys = sys.argv[2:]
 
 # Define lock
-lock = SoftFileLock(f"{tree_path}.lock", timeout=5)
+lock = SoftFileLock(f"{tree_path}.lock", timeout=30)
 
 # Update tag
 with lock:

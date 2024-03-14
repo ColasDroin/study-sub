@@ -1,3 +1,5 @@
+Make the submit script more verbose, what remains to be submitted etc.
+
 Make the generate run recursive and not dependent on the generation
 
 Handle singularity and docker images
