@@ -2,9 +2,6 @@
 import copy
 from typing import Any, Self
 
-# Local imports
-from .dict_yaml_utils import load_yaml, write_yaml
-
 
 def ask_and_set_context(dic_gen: dict[str, Any]):
     while True:
@@ -77,22 +74,31 @@ def ask_skip_configured_jobs() -> bool:
     return skip_configured_jobs == "y"
 
 
-class StudyConfig:
+class ConfigJobs:
     def __init__(self, dict_tree: dict):
         # Load the corresponding yaml as dicts
         self.dict_tree = dict_tree
 
     def _find_and_configure_jobs_recursion(
-        self: Self, dic_gen: dict[str, Any], depth: int = 0, l_keys: list[str] | None = None
+        self: Self,
+        dic_gen: dict[str, Any],
+        depth: int = 0,
+        l_keys: list[str] | None = None,
+        find_only: bool = False,
     ):
         if l_keys is None:
             l_keys = []
+
+        if not hasattr(self, "dic_all_jobs"):
+            raise AttributeError("dic_all_jobs should be set before calling this method")
 
         # Recursively look for job key in the tree, keeping track of the depth
         # of the job in the tree
         for key, value in dic_gen.items():
             if isinstance(value, dict):
-                self._find_and_configure_jobs_recursion(value, depth + 1, l_keys + [key])
+                self._find_and_configure_jobs_recursion(
+                    dic_gen=value, depth=depth + 1, l_keys=l_keys + [key], find_only=find_only
+                )
             elif key == "file":
                 # Add job the the list of all jobs
                 # In theory, the list of keys can be obtained from the job path
@@ -101,6 +107,19 @@ class StudyConfig:
                     "gen": depth,
                     "l_keys": copy.copy(l_keys),
                 }
+
+                # Stop the browsing if we only want to find the jobs
+                if find_only:
+                    return
+
+                # Otherwise ensure that the job can be configured
+                if not hasattr(self, "dic_config_jobs") or not hasattr(
+                    self, "skip_configured_jobs"
+                ):
+                    raise AttributeError(
+                        "dic_config_jobs and skip_configured_jobs should be set before calling this method"
+                    )
+
                 job_name = value.split("/")[-1]
 
                 # Ensure configuration is not already set
@@ -130,12 +149,20 @@ class StudyConfig:
                     dic_gen["submission_type"] = self.dic_config_jobs[job_name]["submission_type"]
                     dic_gen["status"] = self.dic_config_jobs[job_name]["status"]
 
-    def find_and_configure_jobs(self: Self, dic_tree: dict[str, Any]):
+    def find_and_configure_jobs(self: Self):
         # Variables to store the jobs and their configuration
         self.dic_config_jobs = {}
         self.dic_all_jobs = {}
         self.skip_configured_jobs = None
 
-        self._find_and_configure_jobs_recursion(dic_tree, depth=-1)
+        self._find_and_configure_jobs_recursion(self.dict_tree, depth=-1, find_only=False)
 
         return self.dic_all_jobs, self.dic_config_jobs
+
+    def find_all_jobs(self: Self):
+        # Variables to store the jobs and their configuration
+        self.dic_all_jobs = {}
+
+        self._find_and_configure_jobs_recursion(self.dict_tree, depth=-1, find_only=True)
+
+        return self.dic_all_jobs

@@ -6,7 +6,6 @@
 import importlib.metadata
 
 # Local imports
-from .generate_config import StudyConfig
 from .study_sub import StudySub
 
 __all__ = ["StudySub"]
