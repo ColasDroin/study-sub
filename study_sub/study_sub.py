@@ -141,12 +141,7 @@ class StudySub:
             dic_to_submit_by_gen = {max_gen: dic_to_submit_by_gen[max_gen]}
 
         # Convert dic_to_submit_by_gen to contain all requested information
-        dic_to_submit = {}
-        for dic_gen in dic_to_submit_by_gen.values():
-            for job in dic_gen:
-                dic_to_submit[job] = nested_get(dic_tree, dic_all_jobs[job]["l_keys"])
-
-        print(dic_to_submit)
+        l_jobs_to_submit = [job for dic_gen in dic_to_submit_by_gen.values() for job in dic_gen]
 
         # # ! Fix this code
         # config_generation = root.parameters["generations"][f"{generation}"]

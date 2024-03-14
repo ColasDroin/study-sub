@@ -15,113 +15,38 @@ import yaml
 # --- Class for job submission
 # ==================================================================================================
 class ClusterSubmission:
-    def __init__(self, config, path_root):
-        # Configuration of the current generation
-        self.config = config
-        if config["run_on"] in ["local_pc", "htc", "slurm", "htc_docker", "slurm_docker"]:
-            self.run_on = self.config["run_on"]
-        else:
-            raise ValueError(
-                "Error: run_on must be one of 'local_pc', 'htc', 'htc_docker', 'slurm',"
-                " 'slurm_docker'"
-            )
+    def __init__(self, l_jobs_to_submit: list[str], dic_all_jobs: dict, dic_tree: dict):
+        self.l_jobs_to_submit = l_jobs_to_submit
+        self.dic_all_jobs = dic_all_jobs
+        self.dic_tree = dic_tree
 
-        # GPU configuration (for HTC)
-        if config["context"] in ["cupy", "opencl"] and self.run_on in [
-            "htc",
-            "htc_docker",
-            "slurm",
-            "slurm_docker",
-        ]:
-            self.request_GPUs = 1
-            self.slurm_queue_statement = ""
-        else:
-            self.request_GPUs = 0
-            self.slurm_queue_statement = "#SBATCH --partition=slurm_hpc_acc"
+        # ! Adapt this piece of code where it is needed
+        # # GPU configuration (for HTC)
+        # if config["context"] in ["cupy", "opencl"] and self.run_on in [
+        #     "htc",
+        #     "htc_docker",
+        #     "slurm",
+        #     "slurm_docker",
+        # ]:
+        #     self.request_GPUs = 1
+        #     self.slurm_queue_statement = ""
+        # else:
+        #     self.request_GPUs = 0
+        #     self.slurm_queue_statement = "#SBATCH --partition=slurm_hpc_acc"
 
-        # Path to store the association between job path and job id after submission
-        self.path_root = path_root
-        self.path_dic_id_to_job = f"{self.path_root}/id_job.yaml"
+        # ! Also adapt this piece of code where it is needed
+        # # Path to singularity image
+        # if "container_image" in self.dic_tree:
+        #     self.path_image = self.dic_tree["container_image"]
 
-        # Path to singularity image
-        if "singularity_image" in self.config:
-            self.path_image = self.config["singularity_image"]
-        elif self.run_on in ["slurm_docker", "htc_docker"]:
-            raise ValueError(
-                "Error: singularity_image must be defined in config.yaml for slurm_docker and"
-                " htc_docker"
-            )
-        else:
-            # Needs to be defined, but irrelevant for local_pc, slurm and htc
-            self.path_image = ""
-
-        # Dictionnary of instructions for submission files
-        self.dic_submission = {
-            "local_pc": {
-                "head": "# Running on local pc\n",
-                "body": lambda path_node: f"bash {path_node}/run.sh &\n",
-                "tail": f"#{self.run_on}\n",
-                "submit_command": lambda filename: f"bash {filename}",
-            },
-            "slurm": {
-                "head": "# Running on SLURM \n",
-                "body": lambda path_node: f"""sbatch --ntasks=2 {self.slurm_queue_statement.split(' ')[1] if self.slurm_queue_statement != "" else self.slurm_queue_statement} --output=output.txt --error=error.txt --gres=gpu:{self.request_GPUs} {path_node}/run.sh\n""",
-                "tail": f"#{self.run_on}\n",
-                "submit_command": lambda filename: f"bash {filename}",
-            },
-            "slurm_docker": {
-                "head": lambda path_node: (
-                    "#!/bin/bash\n"
-                    + "# This is a SLURM submission file using Docker\n"
-                    + self.slurm_queue_statement
-                    + "\n"
-                    + f"#SBATCH --output={path_node}/output.txt\n"
-                    + f"#SBATCH --error={path_node}/error.txt\n"
-                    + "#SBATCH --ntasks=2\n"
-                    + f"#SBATCH --gres=gpu:{self.request_GPUs}\n"
-                ),
-                "body": lambda path_node: (
-                    f"singularity exec {self.path_image} {path_node}/run.sh\n"
-                ),
-                "tail": f"#{self.run_on}\n",
-                "submit_command": lambda filename: f"sbatch {filename}",
-            },
-            "htc": {
-                "head": (
-                    "# This is a HTCondor submission file\n"
-                    + "error  = error.txt\n"
-                    + "output = output.txt\n"
-                    + "log  = log.txt\n"
-                ),
-                "body": (
-                    lambda path_node: f"initialdir = {path_node}\n"
-                    + f"executable = {path_node}/run.sh\n"
-                    + f"request_GPUs = {self.request_GPUs}\n"
-                    + "queue\n"
-                ),
-                "tail": f"#{self.run_on}\n",
-                "submit_command": lambda filename: f"condor_submit {filename}",
-            },
-            "htc_docker": {
-                "head": (
-                    "# This is a HTCondor submission file using Docker\n"
-                    + "error  = error.txt\n"
-                    + "output = output.txt\n"
-                    + "log  = log.txt\n"
-                    + "universe = vanilla\n"
-                    + "+SingularityImage ="
-                    + f' "{self.path_image}"\n'
-                ),
-                "body": (
-                    lambda path_node: f"initialdir = {path_node}\n"
-                    + f"executable = {path_node}/run.sh\n"
-                    + f"request_GPUs = {self.request_GPUs}\n"
-                    + "queue\n"
-                ),
-                "tail": f"#{self.run_on}\n",
-                "submit_command": lambda filename: f"condor_submit {filename}",
-            },
-        }
+        # elif self.submission_type in ["slurm_docker", "htc_docker"]:
+        #     raise ValueError(
+        #         "Error: container_image must be defined in tree for slurm_docker and"
+        #         " htc_docker"
+        #     )
+        # else:
+        #     # Needs to be defined, but irrelevant for local_pc, slurm and htc
+        #     self.path_image = ""
 
     # Getter for dic_id_to_job
     @property
@@ -521,4 +446,3 @@ class ClusterSubmission:
         else:
             print("Querying jobs are not implemented yet for this submission mode")
         return l_jobs
-
