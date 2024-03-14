@@ -11,9 +11,9 @@ from filelock import SoftFileLock
 # Local imports
 from study_gen._nested_dicts import nested_get
 
-from .config import ConfigJobs
+from .config_utils import ConfigJobs
 from .dict_yaml_utils import load_yaml, write_yaml
-from .generate_run import generate_run_sh, generate_run_sh_htc
+from .generate_run import generate_run_file
 
 
 # ==================================================================================================
@@ -29,14 +29,31 @@ class StudySub:
         # Path to study files
         self.path_tree = path_tree
 
-        # Absolute path to the study (get from the path_tree)
-        self.abs_path = os.path.abspath(path_tree).split("/tree.yaml")[0]
+        # Name of the study folder
+        self.study_name = os.path.dirname(path_tree)
 
-        # Path to the python environment, activate with `source path_python_environment/bin/activate`
-        self.path_python_environment = path_python_environment
+        # Absolute path to the study folder (get from the path_tree)
+        self.abs_path = os.path.abspath(self.study_name).split(f"/{self.study_name}")[0]
+
+        # Path to the python environment, activate with `source path_python_environment`
+        # Turn to abolute path if it is not already
+        if not os.path.isabs(path_python_environment):
+            self.path_python_environment = os.path.abspath(path_python_environment)
+        else:
+            self.path_python_environment = path_python_environment
+
+        # Add /bin/activate to the path_python_environment if needed
+        if not self.path_python_environment.endswith("/bin/activate"):
+            self.path_python_environment += "/bin/activate"
 
         # Container image (Docker or Singularity, if any)
-        self.path_container_image = path_container_image
+        # Turn to abolute path if it is not already
+        if path_container_image is None:
+            self.path_container_image = None
+        elif not os.path.isabs(path_container_image):
+            self.path_container_image = os.path.abspath(path_container_image)
+        else:
+            self.path_container_image = path_container_image
 
         # Lock file to avoid concurrent access (softlock as several platforms are used)
         self.lock = SoftFileLock(f"{self.path_tree}.lock", timeout=5)
@@ -73,14 +90,20 @@ class StudySub:
         dic_tree = self.dic_tree
         for job in dic_all_jobs:
             l_keys = dic_all_jobs[job]["l_keys"]
-
-            # Get the absolute path to the job
-
-            # Check if htcondor is the configuration
-            if "htc" in nested_get(dic_tree, l_keys + ["run_on"]):
-                generate_run_sh_htc()
-            else:
-                generate_run_sh()
+            job_name = job.split("/")[-1]
+            relative_job_folder = "/".join(job.split("/")[:-1])
+            absolute_job_folder = f"{self.abs_path}/{relative_job_folder}"
+            generation_number = dic_all_jobs[job]["gen"]
+            run_str = generate_run_file(
+                absolute_job_folder,
+                job_name,
+                self.path_python_environment,
+                generation_number,
+                htc="htc" in nested_get(dic_tree, l_keys + ["submission_type"]),
+            )
+            # Write the run file
+            with open(f"{absolute_job_folder}/run.sh", "w") as f:
+                f.write(run_str)
 
     def get_job_status(self: Self, l_keys: list[str], dic_tree=None):
         # Using dic_tree as an argument allows to avoid reloading it

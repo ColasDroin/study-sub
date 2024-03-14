@@ -1,2 +1,4 @@
 Make the generate run recursive and not dependent on the generation
+Log that the job is over using my package
 Handle singularity and docker images
+Add rm statement at the end of sh run files
