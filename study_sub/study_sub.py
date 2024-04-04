@@ -7,7 +7,7 @@ from typing import Self
 
 # Third party imports
 from filelock import SoftFileLock
-from study_gen._nested_dicts import nested_get
+from study_gen._nested_dicts import nested_get, nested_set
 
 from .dependency_graph import DependencyGraph
 from .generate_run import generate_run_file
@@ -91,25 +91,34 @@ class StudySub:
 
     def generate_run_files(self: Self):
         dic_all_jobs = self.get_all_jobs()
-        dic_tree = self.dic_tree
-        for job in dic_all_jobs:
-            l_keys = dic_all_jobs[job]["l_keys"]
-            job_name = job.split("/")[-1]
-            relative_job_folder = "/".join(job.split("/")[:-1])
-            absolute_job_folder = f"{self.abs_path}/{relative_job_folder}"
-            generation_number = dic_all_jobs[job]["gen"]
-            run_str = generate_run_file(
-                absolute_job_folder,
-                job_name,
-                self.path_python_environment,
-                generation_number,
-                self.abs_path_tree,
-                l_keys,
-                htc="htc" in nested_get(dic_tree, l_keys + ["submission_type"]),
-            )
-            # Write the run file
-            with open(f"{absolute_job_folder}/run.sh", "w") as f:
-                f.write(run_str)
+        # Lock since we are modifying the tree
+        with self.lock:
+            dic_tree = self.dic_tree
+            for job in dic_all_jobs:
+                l_keys = dic_all_jobs[job]["l_keys"]
+                job_name = job.split("/")[-1]
+                relative_job_folder = "/".join(job.split("/")[:-1])
+                absolute_job_folder = f"{self.abs_path}/{relative_job_folder}"
+                generation_number = dic_all_jobs[job]["gen"]
+                run_str = generate_run_file(
+                    absolute_job_folder,
+                    job_name,
+                    self.path_python_environment,
+                    generation_number,
+                    self.abs_path_tree,
+                    l_keys,
+                    htc="htc" in nested_get(dic_tree, l_keys + ["submission_type"]),
+                )
+                # Write the run file
+                path_run_job = f"{absolute_job_folder}/run.sh"
+                with open(path_run_job, "w") as f:
+                    f.write(run_str)
+
+                # Record the path to the run file in the tree
+                nested_set(dic_tree, l_keys + ["path_run"], path_run_job)
+
+            # Update the dict
+            self.dic_tree = dic_tree
 
     def get_job_status(self: Self, l_keys: list[str], dic_tree: bool | None = None):
         # Using dic_tree as an argument allows to avoid reloading it
@@ -142,6 +151,9 @@ class StudySub:
         # Convert dic_to_submit_by_gen to contain all requested information
         l_jobs_to_submit = [job for dic_gen in dic_to_submit_by_gen.values() for job in dic_gen]
 
+        print(l_jobs_to_submit)
+        print(dic_all_jobs)
+        print(dic_to_submit_by_gen)
         # # ! Fix this code
         # config_generation = root.parameters["generations"][f"{generation}"]
         # cluster_submission = ClusterSubmission(config_generation, root.get_abs_path())

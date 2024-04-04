@@ -5,6 +5,7 @@ base:
     submission_type: htc
     htc_flavor: espresso
     status: to_submit
+    path_run: /Users/cdroin/Desktop/study-sub/example_study/study_dummy/base/run.sh
   a_1.0_b_1:
     some_more_computations:
       file: study_dummy/base/a_1.0_b_1/some_more_computations.py
@@ -12,6 +13,7 @@ base:
       submission_type: local
       htc_flavor:
       status: to_submit
+      path_run: /Users/cdroin/Desktop/study-sub/example_study/study_dummy/base/a_1.0_b_1/run.sh
   a_1.0_b_2:
     some_more_computations:
       file: study_dummy/base/a_1.0_b_2/some_more_computations.py
@@ -19,6 +21,7 @@ base:
       submission_type: local
       status: to_submit
       htc_flavor:
+      path_run: /Users/cdroin/Desktop/study-sub/example_study/study_dummy/base/a_1.0_b_2/run.sh
   a_2.0_b_1:
     some_more_computations:
       file: study_dummy/base/a_2.0_b_1/some_more_computations.py
@@ -26,6 +29,7 @@ base:
       submission_type: local
       status: to_submit
       htc_flavor:
+      path_run: /Users/cdroin/Desktop/study-sub/example_study/study_dummy/base/a_2.0_b_1/run.sh
   a_2.0_b_2:
     some_more_computations:
       file: study_dummy/base/a_2.0_b_2/some_more_computations.py
@@ -33,6 +37,7 @@ base:
       submission_type: local
       status: to_submit
       htc_flavor:
+      path_run: /Users/cdroin/Desktop/study-sub/example_study/study_dummy/base/a_2.0_b_2/run.sh
 python_environment: /Users/cdroin/Desktop/study-sub/.venv/bin/activate
 container_image:
 absolute_path: /Users/cdroin/Desktop/study-sub/example_study
