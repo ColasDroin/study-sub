@@ -22,10 +22,19 @@ from .submission_statements import HTC, HTCDocker, LocalPC, Slurm, SlurmDocker
 # --- Class for job submission
 # ==================================================================================================
 class ClusterSubmission:
-    def __init__(self: Self, l_jobs_to_submit: list[str], dic_all_jobs: dict, dic_tree: dict):
+    def __init__(
+        self: Self,
+        study_name: str,
+        l_jobs_to_submit: list[str],
+        dic_all_jobs: dict,
+        dic_tree: dict,
+        path_submission_file: str,
+    ):
+        self.study_name = study_name
         self.l_jobs_to_submit = l_jobs_to_submit
         self.dic_all_jobs = dic_all_jobs
         self.dic_tree = dic_tree
+        self.path_submission_file = path_submission_file
 
         # TODO
         # ! Adapt this piece of code where it is needed
@@ -88,8 +97,7 @@ class ClusterSubmission:
                 subdic_job["id_sub"] = dic_id_to_job[subdic_job["id_sub"]]
             # Else all is consistent
 
-        # TODO
-        # ! Ensure that modifying subdic modify the dic_tree
+        # TODO WHEN DEBUGGING: Ensure that modifying subdic indeed modifies the dic_tree
 
     def _update_dic_id_to_job(self, running_jobs, queuing_jobs):
         # Look for jobs in the dictionnary that are not running or queuing anymore
@@ -103,11 +111,9 @@ class ClusterSubmission:
             # Update dic_id_to_job
             self.dic_id_to_job = dic_id_to_job
 
-    def _get_state_jobs(self, dic_id_to_job=None, verbose=True):
-        if dic_id_to_job is None:
-            dic_id_to_job = self.dic_id_to_job
-        running_jobs = self.querying_jobs(dic_id_to_job=dic_id_to_job, status="running")
-        queuing_jobs = self.querying_jobs(dic_id_to_job=dic_id_to_job, status="queuing")
+    def _get_state_jobs(self, verbose=True):
+        running_jobs = self.querying_jobs(dic_id_to_job=self.dic_id_to_job, status="running")
+        queuing_jobs = self.querying_jobs(dic_id_to_job=self.dic_id_to_job, status="queuing")
         self._update_dic_id_to_job(running_jobs, queuing_jobs)
         if verbose:
             print("Running: \n" + "\n".join(running_jobs))
@@ -254,10 +260,10 @@ class ClusterSubmission:
                 write_htc_job_flavour=self.run_on in ["htc", "htc_docker"],
             )
 
-    def write_sub_files(self, list_of_nodes, filename="file.sub"):
+    def write_sub_files(self):
         running_jobs, queuing_jobs = self._get_state_jobs(verbose=False)
         l_filenames, l_path_jobs = self._write_sub_files(
-            filename, running_jobs, queuing_jobs, list_of_nodes
+            self.path_submission_file, running_jobs, queuing_jobs, self.l_jobs_to_submit
         )
         return l_filenames, l_path_jobs
 
@@ -315,10 +321,9 @@ class ClusterSubmission:
             self.dic_id_to_job = dic_id_to_job
 
         print("Jobs status after submission:")
-        running_jobs, queuing_jobs = self._get_state_jobs(dic_id_to_job=dic_id_to_job, verbose=True)
+        running_jobs, queuing_jobs = self._get_state_jobs(verbose=True)
 
-    @staticmethod
-    def _get_local_jobs():
+    def _get_local_jobs(self):
         l_jobs = []
         # Warning, does not work at the moment in lxplus...
         for ps in psutil.pids():
@@ -329,8 +334,8 @@ class ClusterSubmission:
             if len(aux) > 1 and "run.sh" in aux[-1]:
                 job = str(Path(aux[-1]).parent)
 
-                # Only get path after master_study
-                job = job.split("master_study")[1]
+                # Only get path after name of the study
+                job = job.split(self.study_name)[1]
 
                 l_jobs.append(f"{job}/")
         return l_jobs
@@ -448,23 +453,32 @@ class ClusterSubmission:
 
         return l_jobs
 
-    def querying_jobs(self, status="running", dic_id_to_job=None):
-        # sourcery skip: remove-redundant-pass
-        l_jobs = []
+    def querying_jobs(self, status="running"):
+        # sourcery skip: remove-redundant-if, remove-redundant-pass, swap-nested-ifs
+        # Find out which type of submission to query
+        set_submission_type = set()
+        for job in self.l_jobs_to_submit:
+            l_keys = self.dic_all_jobs[job]["l_keys"]
+            set_submission_type.add(nested_get(self.dic_tree, l_keys + ["submission_type"]))
 
-        if self.run_on == "local_pc":
+        # Ensure that submission does not mix different htc and slurm
+        if ("htc" in set_submission_type or "htc_docker" in set_submission_type) and (
+            "slurm" in set_submission_type or "slurm_docker" in set_submission_type
+        ):
+            raise ValueError("Error: Mixing htc and slurm submission is not allowed")
+
+        l_jobs = []
+        if "local_pc" in set_submission_type:
             if status == "running":
-                l_jobs = self._get_local_jobs()
+                l_jobs.extend(self._get_local_jobs())
             else:
                 # Always empty return as there is no queuing in local pc
                 pass
 
-        elif self.run_on in ["htc", "htc_docker"]:
-            l_jobs = self._get_condor_jobs(status, dic_id_to_job)
+        if set_submission_type.intersection(["htc", "htc_docker"]) != set():
+            l_jobs.extend(self._get_condor_jobs(status, self.dic_id_to_job))
 
-        elif self.run_on in ["slurm", "slurm_docker"]:
-            l_jobs = self._get_slurm_jobs(status, dic_id_to_job)
+        if set_submission_type.intersection(["slurm", "slurm_docker"]) != set():
+            l_jobs.extend(self._get_slurm_jobs(status, self.dic_id_to_job))
 
-        else:
-            print("Querying jobs are not implemented yet for this submission mode")
         return l_jobs

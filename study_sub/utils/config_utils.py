@@ -202,6 +202,7 @@ class ConfigJobs:
         # Variables to store the jobs and their configuration
         self.dic_all_jobs = {}
 
+        # Find all jobs and associated generation
         self._find_and_configure_jobs_recursion(self.dic_tree, depth=-1, find_only=True)
 
         return self.dic_all_jobs

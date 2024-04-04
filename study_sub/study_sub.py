@@ -9,10 +9,10 @@ from typing import Self
 from filelock import SoftFileLock
 from study_gen._nested_dicts import nested_get, nested_set
 
+# Local imports
+from .cluster_submission import ClusterSubmission
 from .dependency_graph import DependencyGraph
 from .generate_run import generate_run_file
-
-# Local imports
 from .utils.config_utils import ConfigJobs
 from .utils.dict_yaml_utils import load_yaml, write_yaml
 
@@ -129,38 +129,45 @@ class StudySub:
 
     def submit(self: Self, one_generation_at_a_time: bool = False):
         dic_all_jobs = self.get_all_jobs()
-        # Get dic tree once to avoid reloading it for every job
-        dic_tree = self.dic_tree
 
-        # Collect dict of list of unfinished jobs for every tree branch and every gen
-        dic_to_submit_by_gen = {}
-        for job in dic_all_jobs:
-            # ! This hasn't been debuged properly for n_gen > 2
-            l_dep = DependencyGraph(dic_tree, dic_all_jobs).get_unfinished_dependency(job)
-            if len(l_dep) == 0:
-                gen = dic_all_jobs[job]["gen"]
-                if gen not in dic_to_submit_by_gen:
-                    dic_to_submit_by_gen[gen] = []
-                dic_to_submit_by_gen[gen].append(job)
+        with self.lock:
+            # Get dic tree once to avoid reloading it for every job
+            dic_tree = self.dic_tree
 
-        # Only keep the topmost generation if one_generation_at_a_time is True
-        if one_generation_at_a_time:
-            max_gen = max(dic_to_submit_by_gen.keys())
-            dic_to_submit_by_gen = {max_gen: dic_to_submit_by_gen[max_gen]}
+            # Collect dict of list of unfinished jobs for every tree branch and every gen
+            dic_to_submit_by_gen = {}
+            for job in dic_all_jobs:
+                # ! This hasn't been debuged properly for n_gen > 2
+                l_dep = DependencyGraph(dic_tree, dic_all_jobs).get_unfinished_dependency(job)
+                if len(l_dep) == 0:
+                    gen = dic_all_jobs[job]["gen"]
+                    if gen not in dic_to_submit_by_gen:
+                        dic_to_submit_by_gen[gen] = []
+                    dic_to_submit_by_gen[gen].append(job)
 
-        # Convert dic_to_submit_by_gen to contain all requested information
-        l_jobs_to_submit = [job for dic_gen in dic_to_submit_by_gen.values() for job in dic_gen]
+            # Only keep the topmost generation if one_generation_at_a_time is True
+            if one_generation_at_a_time:
+                max_gen = max(dic_to_submit_by_gen.keys())
+                dic_to_submit_by_gen = {max_gen: dic_to_submit_by_gen[max_gen]}
 
-        print(l_jobs_to_submit)
-        print(dic_all_jobs)
-        print(dic_to_submit_by_gen)
-        # # ! Fix this code
-        # config_generation = root.parameters["generations"][f"{generation}"]
-        # cluster_submission = ClusterSubmission(config_generation, root.get_abs_path())
-        # path_file = f"submission_files/{dic_int_to_str[generation]}_generation.sub"
-        # l_filenames, l_path_jobs = cluster_submission.write_sub_files(
-        #     root.generation(generation), path_file
-        # )
-        # cluster_submission.submit(l_filenames, l_path_jobs)
+            # Convert dic_to_submit_by_gen to contain all requested information
+            l_jobs_to_submit = [job for dic_gen in dic_to_submit_by_gen.values() for job in dic_gen]
 
-        # ! One must update dic_tree from the dic_tree of cluster_submission after submission
+            print(l_jobs_to_submit)
+            print(dic_all_jobs)
+            print(dic_to_submit_by_gen)
+            print(self.abs_path)
+            path_submission_file = f"{self.abs_path}/submission_file.sub"
+            cluster_submission = ClusterSubmission(
+                self.study_name, l_jobs_to_submit, dic_all_jobs, dic_tree, path_submission_file
+            )
+
+            # ! Fix this code
+
+            l_filenames, l_path_jobs = cluster_submission.write_sub_files(
+                root.generation(generation), path_file
+            )
+            cluster_submission.submit(l_filenames, l_path_jobs)
+
+            # Update dic_tree from cluster_submission
+            self.dic_tree = cluster_submission.dic_tree
