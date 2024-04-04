@@ -1,3 +1,11 @@
+# TODO NEXT
+- Finish debug study_sub and cluster_submission.py. This means:
+    - ensure that path_job is consistent with the path that I obtained from node
+    - adapt the submission to be done from object and not from dict
+
+
+# TODO IN THE FUTURE
+
 Make the submit script more verbose, what remains to be submitted etc.
 
 Make the generate run recursive and not dependent on the generation
