@@ -35,21 +35,13 @@ class ClusterSubmission:
         self.dic_all_jobs = dic_all_jobs
         self.dic_tree = dic_tree
         self.path_submission_file = path_submission_file
-
-        # TODO
-        # ! Adapt this piece of code where it is needed
-        # # GPU configuration (for HTC)
-        # if config["context"] in ["cupy", "opencl"] and self.run_on in [
-        #     "htc",
-        #     "htc_docker",
-        #     "slurm",
-        #     "slurm_docker",
-        # ]:
-        #     self.request_GPUs = 1
-        #     self.slurm_queue_statement = ""
-        # else:
-        #     self.request_GPUs = 0
-        #     self.slurm_queue_statement = "#SBATCH --partition=slurm_hpc_acc"
+        self.dic_submission = {
+            "local_pc": LocalPC,
+            "htc": HTC,
+            "htc_docker": HTCDocker,
+            "slurm": Slurm,
+            "slurm_docker": SlurmDocker,
+        }
 
         # TODO
         # ! Also adapt this piece of code where it is needed
@@ -267,13 +259,7 @@ class ClusterSubmission:
         running_jobs, queuing_jobs = self._get_state_jobs(verbose=False)
 
         # Make a dict of all jobs to submit depending on the submission type
-        dic_jobs_to_submit = {
-            "local_pc": [],
-            "htc": [],
-            "htc_docker": [],
-            "slurm": [],
-            "slurm_docker": [],
-        }
+        dic_jobs_to_submit = {key: [] for key in self.dic_submission.keys()}
         for job in self.l_jobs_to_submit:
             l_keys = self.dic_all_jobs[job]["l_keys"]
             submission_type = nested_get(self.dic_tree, l_keys + ["submission_type"])
@@ -290,31 +276,45 @@ class ClusterSubmission:
                     list_of_jobs,
                     submission_type,
                 )
-                dic_submission_files[submission_type] = (l_submission_filenames, list_of_jobs)
+                l_context_jobs = []
+                for job in list_of_jobs:
+                    # Get corresponding context for each job
+                    l_keys = self.dic_all_jobs[job]["l_keys"]
+                    l_context_jobs.append(nested_get(self.dic_tree, l_keys + ["context"]))
+                    
+                # Record submission files and context
+                dic_submission_files[submission_type] = (l_submission_filenames, l_context_jobs)
 
         return dic_submission_files
 
-    def submit(self, l_filenames, l_jobs, submission_type):
+    def submit(self, l_submission_filenames, l_context_jobs, submission_type):
         # Check that the submission file(s) is/are appropriate for the submission mode
-        if len(l_filenames) > 1 and submission_type != "slurm_docker":
+        if len(l_submission_filenames) > 1 and submission_type != "slurm_docker":
             raise ValueError(
                 "Error: Multiple submission files should not be implemented for this submission"
                 " mode"
             )
-        if len(l_filenames) == 0:
+
+        # Check that at least one job is being submitted
+        if len(l_submission_filenames) == 0:
             print("No job being submitted.")
+
+        # Check that the submission type is valid
+        if submission_type not in self.dic_submission:
+            raise ValueError(f"Error: {submission_type} is not a valid submission mode")
 
         # Submit
         dic_id_to_job_temp = {}
         idx_submission = 0
-        for filename in l_filenames:
-            if submission_type not in self.dic_submission:
-                raise ValueError(f"Error: {submission_type} is not a valid submission mode")
+        for sub_filename in zip(l_submission_filenames):
             if submission_type == "local_pc":
-                os.system(self.dic_submission[submission_type]["submit_command"](filename))
+                os.system(self.dic_submission[submission_type](sub_filename).submit_command)
             else:
+                submit_command = self.dic_submission[submission_type](sub_filename, context).submit_command
+                elif submission_type == 'slurm_docker':
+                    
                 process = subprocess.run(
-                    self.dic_submission[submission_type]["submit_command"](filename).split(" "),
+                    submit_command.split(" "),
                     capture_output=True,
                 )
                 output = process.stdout.decode("utf-8")
@@ -332,6 +332,7 @@ class ClusterSubmission:
                             job_id = int(line.split(" ")[3])
                             dic_id_to_job_temp[job_id] = l_jobs[idx_submission]
                             idx_submission += 1
+
         # Update and write the id-job file
         if dic_id_to_job_temp:
             assert len(dic_id_to_job_temp) == len(l_jobs)

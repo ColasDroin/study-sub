@@ -162,10 +162,13 @@ class StudySub:
                 self.study_name, l_jobs_to_submit, dic_all_jobs, dic_tree, path_submission_file
             )
 
-            # # Write and submit the submission files
-            # dic_submission_files = cluster_submission.write_sub_files()
-            # for submission_type, (l_filenames, l_path_jobs) in dic_submission_files.items():
-            #     cluster_submission.submit(l_filenames, l_path_jobs, submission_type)
+            # Write and submit the submission files
+            dic_submission_files = cluster_submission.write_sub_files()
+            for submission_type, (
+                l_submission_filenames,
+                l_context_jobs,
+            ) in dic_submission_files.items():
+                cluster_submission.submit(l_submission_filenames, l_context_jobs, submission_type)
 
-            # # Update dic_tree from cluster_submission
-            # self.dic_tree = cluster_submission.dic_tree
+            # Update dic_tree from cluster_submission
+            self.dic_tree = cluster_submission.dic_tree
