@@ -191,18 +191,16 @@ class ClusterSubmission:
         # Write the submission file
         with open(filename, "w") as fid:
             fid.write(str_head)
-            for node in list_of_jobs:
-                # Get path node
-                path_node = node.get_abs_path()
-
-                # Get corresponding path job
-                path_job = self._get_path_job(path_node)
+            for job in list_of_jobs:
+                # Get corresponding path job (remove the python file name)
+                path_job = "/".join(job.split("/")[:-1]) + "/"
+                abs_path_job = f"{self.abs_path_study}/{path_job}"
 
                 # Test if node is running, queuing or completed
-                if self._test_node(node, path_job, running_jobs, queuing_jobs):
-                    print(f'Writing submission command for node "{path_node}"')
+                if self._test_job(job, path_job, running_jobs, queuing_jobs):
+                    print(f'Writing submission command for node "{abs_path_job}"')
                     # Write instruction for submission
-                    fid.write(str_body(path_node))
+                    fid.write(str_body(abs_path_job))
 
                     # if user has defined a htc_job_flavor in config.yaml otherwise default is "espresso"
                     if write_htc_job_flavour:
