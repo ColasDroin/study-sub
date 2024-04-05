@@ -1,5 +1,5 @@
 # TODO NEXT
-- Finish debug study_sub and cluster_submission.py. Clean code. Problem with submission file decorrelated from job.
+- Finish debug study_sub and cluster_submission.py. Clean code. 
 
 
 # TODO IN THE FUTURE
