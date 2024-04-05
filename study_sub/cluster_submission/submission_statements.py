@@ -42,9 +42,9 @@ class Slurm(SubmissionStatement):
 
 
 class SlurmDocker(SubmissionStatement):
-    def __init__(self, sub_filename, context, path_image, fix = False):
+    def __init__(self, sub_filename, context, path_image, fix=False):
         super().__init__(sub_filename, context)
-        
+
         # ! Ugly fix, will need to be removed when INFN is fixed
         if fix:
             to_replace = "/storage-hpc/gpfs_data/HPC/home_recovery"
@@ -52,8 +52,10 @@ class SlurmDocker(SubmissionStatement):
             self.path_job_folder = self.path_job_folder.replace(to_replace, replacement)
             path_image = path_image.replace(to_replace, replacement)
             self.sub_filename = self.sub_filename.replace(to_replace, replacement)
-            self.str_fixed_run = f"sed -i 's/{to_replace}/{replacement}/' {self.path_job_folder}/run.sh\n"
-            
+            self.str_fixed_run = (
+                f"sed -i 's/{to_replace}/{replacement}/' {self.path_job_folder}/run.sh\n"
+            )
+
         self.head = (
             "#!/bin/bash\n"
             + "# This is a SLURM submission file using Docker\n"
@@ -67,19 +69,6 @@ class SlurmDocker(SubmissionStatement):
         self.body = f"singularity exec {path_image} {self.path_job_folder}/run.sh"
         self.tail = "# SLURM Docker"
         self.submit_command = f"sbatch {self.sub_filename}"
-        
-        
-
-            # update path for sed
-            to_replace = to_replace.replace("/", "\/")
-            replacement = replacement.replace("/", "\/")
-                  
-                  
-
-
-
-
-
 
 
 class HTC(SubmissionStatement):
