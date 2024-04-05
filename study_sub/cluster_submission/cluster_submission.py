@@ -174,27 +174,16 @@ class ClusterSubmission:
                 l_filenames.append(filename_sub)
         return l_filenames
 
-    # ! HOW TO HANDLE JOINED SUBMISSION ????
-    def _write_sub_file(
-        self,
-        sub_filename,
-        running_jobs,
-        queuing_jobs,
-        list_of_jobs,
-        l_context_jobs,
-        submission_type,
-        write_htc_job_flavour=False,
-    ):
-        # Ensure only one context is being used for now
-        if len(set(l_context_jobs)) > 1:
-            raise ValueError(
-                "Error: For now, only one context per list of jobs can be used for submission"
+    # ! Need to improve this function, it is ugly af
+    def get_Sub(self, job, submission_type, sub_filename, abs_path_job, context):
+        if submission_type == "slurm":
+            return self.dic_submission[submission_type](sub_filename, abs_path_job, context)
+        elif submission_type == "htc":
+            htc_flavor = nested_get(
+                self.dic_tree, self.dic_all_jobs[job]["l_keys"] + ["htc_flavor"]
             )
-
-        # Get submission instructions
-        if submission_type in ["htc", "slurm"]:
-            Sub = self.dic_submission[submission_type](
-                sub_filename, abs_path_job, l_context_jobs[0]
+            return self.dic_submission[submission_type](
+                sub_filename, abs_path_job, context, htc_flavor
             )
         elif submission_type in ["htc_docker", "slurm_docker"]:
             # Path to singularity image
@@ -205,49 +194,66 @@ class ClusterSubmission:
                     "Error: container_image is not defined in the tree. Please define it in the"
                     " config.yaml file."
                 )
-            Sub = self.dic_submission[submission_type](
-                sub_filename, abs_path_job, l_context_jobs[0], self.path_image
-            )
+
+            if submission_type == "htc_docker":
+                htc_flavor = nested_get(
+                    self.dic_tree, self.dic_all_jobs[job]["l_keys"] + ["htc_flavor"]
+                )
+                return self.dic_submission[submission_type](
+                    sub_filename, abs_path_job, context, self.path_image, htc_flavor
+                )
+            else:
+                return self.dic_submission[submission_type](
+                    sub_filename, abs_path_job, context, self.path_image
+                )
         else:
             raise ValueError(f"Error: {submission_type} is not a valid submission mode")
-        str_head = self.dic_submission[self.run_on]["head"]
-        str_body = self.dic_submission[self.run_on]["body"]
-        str_tail = self.dic_submission[self.run_on]["tail"]
+
+    def _write_sub_file(
+        self,
+        sub_filename,
+        running_jobs,
+        queuing_jobs,
+        list_of_jobs,
+        l_context_jobs,
+        submission_type,
+    ):
+        # Ensure only one context is being used for now
+        if len(set(l_context_jobs)) > 1:
+            raise ValueError(
+                "Error: For now, only one context per list of jobs can be used for submission"
+            )
 
         # Flag to know if the file can be submitted (at least one job in it)
         ok_to_submit = False
 
         # Write the submission file
         with open(sub_filename, "w") as fid:
-            fid.write(str_head)
-            for job in list_of_jobs:
+            for idx, job in enumerate(list_of_jobs):
                 # Get corresponding path job (remove the python file name)
-                path_job = "/".join(job.split("/")[:-1]) + "/"
-                abs_path_job = f"{self.abs_path_study}/{path_job}"
+                path_job, abs_path_job = self.return_abs_path_job(list_of_jobs[0])
 
-                # Test if node is running, queuing or completed
+                # Get Submission object
+                Sub = self.get_Sub(
+                    job, submission_type, sub_filename, abs_path_job, l_context_jobs[0]
+                )
+
+                # Take the first job as reference for head
+                if idx == 0:
+                    fid.write(Sub.head)
+
+                # Test if job is running, queuing or completed
                 if self._test_job(job, path_job, running_jobs, queuing_jobs):
                     print(f'Writing submission command for node "{abs_path_job}"')
                     # Write instruction for submission
-                    fid.write(str_body(abs_path_job))
-
-                    # if user has defined a htc_job_flavor in config.yaml otherwise default is "espresso"
-                    if write_htc_job_flavour:
-                        if "htc_job_flavor" in self.config:
-                            htc_job_flavor = self.config["htc_job_flavor"]
-                        else:
-                            print(
-                                "Warning: htc_job_flavor not defined in config.yaml. Using espresso"
-                                " as default"
-                            )
-                            htc_job_flavor = "espresso"
-                        fid.write(f'+JobFlavour  = "{htc_job_flavor}"\n')
+                    fid.write(Sub.body)
 
                     # Flag file
                     ok_to_submit = True
 
-            # Tail instruction
-            fid.write(str_tail)
+                if idx == len(list_of_jobs) - 1:
+                    # Tail instruction
+                    fid.write(Sub.tail)
 
         if not ok_to_submit:
             os.remove(sub_filename)
@@ -277,7 +283,6 @@ class ClusterSubmission:
                 list_of_jobs,
                 l_context_jobs,
                 submission_type,
-                write_htc_job_flavour=submission_type in ["htc", "htc_docker"],
             )
 
     def write_sub_files(self):
@@ -339,7 +344,10 @@ class ClusterSubmission:
         # Submit
         dic_id_to_job_temp = {}
         idx_submission = 0
-        for sub_filename, context in zip(l_submission_filenames, l_context_jobs):
+        for job, sub_filename, context in zip(list_of_jobs, l_submission_filenames, l_context_jobs):
+            # Get corresponding path job (remove the python file name)
+            path_job, abs_path_job = self.return_abs_path_job(list_of_jobs[0])
+
             if submission_type == "local_pc":
                 os.system(
                     self.dic_submission[submission_type](sub_filename, abs_path_job).submit_command

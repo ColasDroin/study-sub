@@ -73,7 +73,7 @@ class SlurmDocker(SubmissionStatement):
 
 
 class HTC(SubmissionStatement):
-    def __init__(self, sub_filename, path_job_folder, context):
+    def __init__(self, sub_filename, path_job_folder, context, htc_flavor="espresso"):
         super().__init__(sub_filename, path_job_folder, context)
 
         self.head = (
@@ -86,14 +86,15 @@ class HTC(SubmissionStatement):
             f"initialdir = {self.path_job_folder}\n"
             + f"executable = {self.path_job_folder}/run.sh\n"
             + f"request_GPUs = {self.request_GPUs}\n"
-            + "queue"
+            + "queue\n"
+            + f"+JobFlavour  = {htc_flavor}"
         )
         self.tail = "# HTC"
         self.submit_command = f"condor_submit {self.sub_filename}"
 
 
 class HTCDocker(SubmissionStatement):
-    def __init__(self, sub_filename, path_job_folder, context, path_image):
+    def __init__(self, sub_filename, path_job_folder, context, path_image, htc_flavor="espresso"):
         super().__init__(sub_filename, path_job_folder, context)
 
         self.head = (
@@ -110,6 +111,7 @@ class HTCDocker(SubmissionStatement):
             + f"executable = {self.path_job_folder}/run.sh\n"
             + f"request_GPUs = {self.request_GPUs}\n"
             + "queue"
+            + f"+JobFlavour  = {htc_flavor}"
         )
         self.tail = "# HTC Docker"
         self.submit_command = f"condor_submit {self.sub_filename}"
