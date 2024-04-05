@@ -140,25 +140,29 @@ class ClusterSubmission:
             return True
         return False
 
+    def return_abs_path_job(self, job):
+        # Get corresponding path job (remove the python file name)
+        path_job = "/".join(job.split("/")[:-1]) + "/"
+        abs_path_job = f"{self.abs_path_study}/{path_job}"
+        return path_job, abs_path_job
+
     def _write_sub_files_slurm_docker(
-        self, filename, running_jobs, queuing_jobs, list_of_jobs, l_context_jobs
+        self, sub_filename, running_jobs, queuing_jobs, list_of_jobs, l_context_jobs
     ):
         l_filenames = []
         for idx_job, (job, context) in enumerate(zip(list_of_jobs, l_context_jobs)):
-            # Get corresponding path job (remove the python file name)
-            path_job = "/".join(job.split("/")[:-1]) + "/"
-            abs_path_job = f"{self.abs_path_study}/{path_job}"
+            path_job, abs_path_job = self.return_abs_path_job(job)
 
-            # Test if node is running, queuing or completed
+            # Test if job is running, queuing or completed
             if self._test_job(job, path_job, running_jobs, queuing_jobs):
-                filename_sub = f"{filename.split('.sub')[0]}_{idx_job}.sub"
+                filename_sub = f"{sub_filename.split('.sub')[0]}_{idx_job}.sub"
 
                 # Write the submission files
                 # ! Careful, I implemented a fix for path due to the temporary home recovery folder
                 print(f'Writing submission file for node "{abs_path_job}"')
                 fix = True
                 Sub = self.dic_submission["slurm_docker"](
-                    filename_sub, context, self.dic_tree["container_image"], fix=fix
+                    filename_sub, abs_path_job, context, self.dic_tree["container_image"], fix=fix
                 )
                 with open(filename_sub, "w") as fid:
                     fid.write(Sub.head)
@@ -173,14 +177,39 @@ class ClusterSubmission:
     # ! HOW TO HANDLE JOINED SUBMISSION ????
     def _write_sub_file(
         self,
-        filename,
+        sub_filename,
         running_jobs,
         queuing_jobs,
         list_of_jobs,
         l_context_jobs,
+        submission_type,
         write_htc_job_flavour=False,
     ):
+        # Ensure only one context is being used for now
+        if len(set(l_context_jobs)) > 1:
+            raise ValueError(
+                "Error: For now, only one context per list of jobs can be used for submission"
+            )
+
         # Get submission instructions
+        if submission_type in ["htc", "slurm"]:
+            Sub = self.dic_submission[submission_type](
+                sub_filename, abs_path_job, l_context_jobs[0]
+            )
+        elif submission_type in ["htc_docker", "slurm_docker"]:
+            # Path to singularity image
+            if "container_image" in self.dic_tree and self.dic_tree["container_image"] is not None:
+                self.path_image = self.dic_tree["container_image"]
+            else:
+                raise ValueError(
+                    "Error: container_image is not defined in the tree. Please define it in the"
+                    " config.yaml file."
+                )
+            Sub = self.dic_submission[submission_type](
+                sub_filename, abs_path_job, l_context_jobs[0], self.path_image
+            )
+        else:
+            raise ValueError(f"Error: {submission_type} is not a valid submission mode")
         str_head = self.dic_submission[self.run_on]["head"]
         str_body = self.dic_submission[self.run_on]["body"]
         str_tail = self.dic_submission[self.run_on]["tail"]
@@ -189,7 +218,7 @@ class ClusterSubmission:
         ok_to_submit = False
 
         # Write the submission file
-        with open(filename, "w") as fid:
+        with open(sub_filename, "w") as fid:
             fid.write(str_head)
             for job in list_of_jobs:
                 # Get corresponding path job (remove the python file name)
@@ -221,26 +250,33 @@ class ClusterSubmission:
             fid.write(str_tail)
 
         if not ok_to_submit:
-            os.remove(filename)
+            os.remove(sub_filename)
 
-        return [filename] if ok_to_submit else []
+        return [sub_filename] if ok_to_submit else []
 
     def _write_sub_files(
-        self, filename, running_jobs, queuing_jobs, list_of_jobs, l_context_jobs, submission_type
+        self,
+        sub_filename,
+        running_jobs,
+        queuing_jobs,
+        list_of_jobs,
+        l_context_jobs,
+        submission_type,
     ):
         # Slurm docker is a peculiar case as one submission file must be created per job
         if submission_type == "slurm_docker":
             return self._write_sub_files_slurm_docker(
-                filename, running_jobs, queuing_jobs, list_of_jobs, l_context_jobs
+                sub_filename, running_jobs, queuing_jobs, list_of_jobs, l_context_jobs
             )
 
         else:
             return self._write_sub_file(
-                filename,
+                sub_filename,
                 running_jobs,
                 queuing_jobs,
                 list_of_jobs,
                 l_context_jobs,
+                submission_type,
                 write_htc_job_flavour=submission_type in ["htc", "htc_docker"],
             )
 
@@ -305,11 +341,13 @@ class ClusterSubmission:
         idx_submission = 0
         for sub_filename, context in zip(l_submission_filenames, l_context_jobs):
             if submission_type == "local_pc":
-                os.system(self.dic_submission[submission_type](sub_filename).submit_command)
+                os.system(
+                    self.dic_submission[submission_type](sub_filename, abs_path_job).submit_command
+                )
             else:
                 if submission_type in ["htc", "slurm"]:
                     submit_command = self.dic_submission[submission_type](
-                        sub_filename, context
+                        sub_filename, abs_path_job, context
                     ).submit_command
                 elif submission_type in ["htc_docker", "slurm_docker"]:
                     # Path to singularity image
@@ -325,7 +363,7 @@ class ClusterSubmission:
                         )
 
                     submit_command = self.dic_submission[submission_type](
-                        sub_filename, context, self.path_image
+                        sub_filename, abs_path_job, context, self.path_image
                     ).submit_command
                 else:
                     raise ValueError(f"Error: {submission_type} is not a valid submission mode")

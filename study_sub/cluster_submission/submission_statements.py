@@ -7,10 +7,11 @@
 # --- Class for job submission
 # ==================================================================================================
 class SubmissionStatement:
-    def __init__(self, sub_filename, context):
+    def __init__(self, sub_filename, path_job_folder, context):
         self.sub_filename = sub_filename
-        # We assume that the submission file is always in the job folder
-        self.path_job_folder = "/".join(sub_filename.split("/")[:-1])
+        self.path_job_folder = (
+            path_job_folder[:-1] if path_job_folder[-1] == "/" else path_job_folder
+        )
 
         # GPU configuration
         if context in ["cupy", "opencl"]:
@@ -22,8 +23,8 @@ class SubmissionStatement:
 
 
 class LocalPC(SubmissionStatement):
-    def __init__(self, sub_filename, context=None):
-        super().__init__(sub_filename, context)
+    def __init__(self, sub_filename, path_job_folder, context=None):
+        super().__init__(sub_filename, path_job_folder, context)
 
         self.head = "# Running on local pc"
         self.body = f"bash {self.path_job_folder}/run.sh &"
@@ -32,8 +33,8 @@ class LocalPC(SubmissionStatement):
 
 
 class Slurm(SubmissionStatement):
-    def __init__(self, sub_filename, context):
-        super().__init__(sub_filename, context)
+    def __init__(self, sub_filename, path_job_folder, context):
+        super().__init__(sub_filename, path_job_folder, context)
 
         self.head = "# Running on SLURM "
         self.body = f"sbatch --ntasks=2 {self.slurm_queue_statement.split(' ')[1] if self.slurm_queue_statement != "" else self.slurm_queue_statement} --output=output.txt --error=error.txt --gres=gpu:{self.request_GPUs} {self.path_job_folder}/run.sh"
@@ -42,8 +43,8 @@ class Slurm(SubmissionStatement):
 
 
 class SlurmDocker(SubmissionStatement):
-    def __init__(self, sub_filename, context, path_image, fix=False):
-        super().__init__(sub_filename, context)
+    def __init__(self, sub_filename, path_job_folder, context, path_image, fix=False):
+        super().__init__(sub_filename, path_job_folder, context)
 
         # ! Ugly fix, will need to be removed when INFN is fixed
         if fix:
@@ -72,8 +73,8 @@ class SlurmDocker(SubmissionStatement):
 
 
 class HTC(SubmissionStatement):
-    def __init__(self, sub_filename, context):
-        super().__init__(sub_filename, context)
+    def __init__(self, sub_filename, path_job_folder, context):
+        super().__init__(sub_filename, path_job_folder, context)
 
         self.head = (
             "# This is a HTCondor submission file\n"
@@ -92,8 +93,8 @@ class HTC(SubmissionStatement):
 
 
 class HTCDocker(SubmissionStatement):
-    def __init__(self, sub_filename, context, path_image):
-        super().__init__(sub_filename, context)
+    def __init__(self, sub_filename, path_job_folder, context, path_image):
+        super().__init__(sub_filename, path_job_folder, context)
 
         self.head = (
             "# This is a HTCondor submission file using Docker\n"
