@@ -1,7 +1,5 @@
 # TODO NEXT
-- Finish debug study_sub and cluster_submission.py. This means:
-    - ensure that path_job is consistent with the path that I obtained from node
-    - adapt the submission to be done from object and not from dict
+- Finish debug study_sub and cluster_submission.py. Clean code.
 
 
 # TODO IN THE FUTURE

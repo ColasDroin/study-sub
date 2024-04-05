@@ -120,12 +120,12 @@ class StudySub:
             # Update the dict
             self.dic_tree = dic_tree
 
-    def get_job_status(self: Self, l_keys: list[str], dic_tree: bool | None = None):
-        # Using dic_tree as an argument allows to avoid reloading it
-        if dic_tree is None:
-            dic_tree = self.dic_tree
-        # Return the job status
-        return nested_get(dic_tree, l_keys + ["status"])
+    # def get_job_status(self: Self, l_keys: list[str], dic_tree: bool | None = None):
+    #     # Using dic_tree as an argument allows to avoid reloading it
+    #     if dic_tree is None:
+    #         dic_tree = self.dic_tree
+    #     # Return the job status
+    #     return nested_get(dic_tree, l_keys + ["status"])
 
     def submit(self: Self, one_generation_at_a_time: bool = False):
         dic_all_jobs = self.get_all_jobs()
@@ -159,16 +159,19 @@ class StudySub:
             print(self.abs_path)
             path_submission_file = f"{self.abs_path}/submission_file.sub"
             cluster_submission = ClusterSubmission(
-                self.study_name, l_jobs_to_submit, dic_all_jobs, dic_tree, path_submission_file
+                self.study_name, l_jobs_to_submit, dic_all_jobs, dic_tree, path_submission_file, self.abs_path
             )
 
             # Write and submit the submission files
             dic_submission_files = cluster_submission.write_sub_files()
             for submission_type, (
+                list_of_jobs,
                 l_submission_filenames,
                 l_context_jobs,
             ) in dic_submission_files.items():
-                cluster_submission.submit(l_submission_filenames, l_context_jobs, submission_type)
+                cluster_submission.submit(
+                    list_of_jobs, l_submission_filenames, l_context_jobs, submission_type
+                )
 
             # Update dic_tree from cluster_submission
             self.dic_tree = cluster_submission.dic_tree

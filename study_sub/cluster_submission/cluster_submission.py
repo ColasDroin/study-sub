@@ -29,12 +29,14 @@ class ClusterSubmission:
         dic_all_jobs: dict,
         dic_tree: dict,
         path_submission_file: str,
+        abs_path_study: str,
     ):
         self.study_name = study_name
         self.l_jobs_to_submit = l_jobs_to_submit
         self.dic_all_jobs = dic_all_jobs
         self.dic_tree = dic_tree
         self.path_submission_file = path_submission_file
+        self.abs_path_study = abs_path_study
         self.dic_submission = {
             "local_pc": LocalPC,
             "htc": HTC,
@@ -42,21 +44,6 @@ class ClusterSubmission:
             "slurm": Slurm,
             "slurm_docker": SlurmDocker,
         }
-
-        # TODO
-        # ! Also adapt this piece of code where it is needed
-        # # Path to singularity image
-        # if "container_image" in self.dic_tree:
-        #     self.path_image = self.dic_tree["container_image"]
-
-        # elif self.submission_type in ["slurm_docker", "htc_docker"]:
-        #     raise ValueError(
-        #         "Error: container_image must be defined in tree for slurm_docker and"
-        #         " htc_docker"
-        #     )
-        # else:
-        #     # Needs to be defined, but irrelevant for local_pc, slurm and htc
-        #     self.path_image = ""
 
     # Getter for dic_id_to_job
     @property
@@ -135,62 +122,65 @@ class ClusterSubmission:
             print("queuing: \n" + "\n".join(queuing_jobs))
         return running_jobs, queuing_jobs
 
-    # ! TODO: fix from here
-    @staticmethod
-    def _test_node(node, path_job, running_jobs, queuing_jobs):
-        # Test if node is running, queuing or completed
-        if node.has_been("completed"):
+    def _test_job(self, job, path_job, running_jobs, queuing_jobs):
+        # Test if job is completed
+        l_keys = self.dic_all_jobs[job]["l_keys"]
+        completed = nested_get(self.dic_tree, l_keys + ["status"]) == "finished"
+        if completed:
             print(f"{path_job} is already completed.")
+
+        # Test if job is running
         elif path_job in running_jobs:
             print(f"{path_job} is already running.")
+
+        # Test if job is queuing
         elif path_job in queuing_jobs:
             print(f"{path_job} is already queuing.")
+
+        # True if job must be (re)submitted
         else:
             return True
         return False
 
-    def _write_sub_files_slurm(self, filename, running_jobs, queuing_jobs, list_of_nodes):
+    def _write_sub_files_slurm_docker(
+        self, filename, running_jobs, queuing_jobs, list_of_jobs, l_context_jobs
+    ):
         l_filenames = []
-        for idx_node, node in enumerate(list_of_nodes):
-            # Get path node
-            path_node = node.get_abs_path()
-
-            # Get corresponding path job
-            path_job = self._get_path_job(path_node)
+        for idx_job, (job, context) in enumerate(zip(list_of_jobs, l_context_jobs)):
+            # Get corresponding path job (remove the python file name)
+            path_job = "/".join(job.split("/")[:-1]) + "/"
+            abs_path_job = f"{self.abs_path_study}/{path_job}"
 
             # Test if node is running, queuing or completed
-            if self._test_node(node, path_job, running_jobs, queuing_jobs):
-                filename_node = f"{filename.split('.sub')[0]}_{idx_node}.sub"
+            if self._test_job(job, path_job, running_jobs, queuing_jobs):
+                filename_sub = f"{filename.split('.sub')[0]}_{idx_job}.sub"
 
                 # Write the submission files
-                print(f'Writing submission file for node "{path_node}"')
-                with open(filename_node, "w") as fid:
-                    # ! Careful, I implemented a fix for path due to the temporary home recovery folder
-                    to_replace = "/storage-hpc/gpfs_data/HPC/home_recovery"
-                    replacement = "/home/HPC"
-                    fixed_path = path_node.replace(to_replace, replacement)
-                    # update path for sed
-                    to_replace = to_replace.replace("/", "\/")
-                    replacement = replacement.replace("/", "\/")
+                # ! Careful, I implemented a fix for path due to the temporary home recovery folder
+                print(f'Writing submission file for node "{abs_path_job}"')
+                fix = True
+                Sub = self.dic_submission["slurm_docker"](
+                    filename_sub, context, self.dic_tree["container_image"], fix=fix
+                )
+                with open(filename_sub, "w") as fid:
+                    fid.write(Sub.head)
+                    if fix:
+                        fid.write(Sub.str_fixed_run)
+                    fid.write(Sub.body)
+                    fid.write(Sub.tail)
 
-                    # Head
-                    fid.write(self.dic_submission[self.run_on]["head"](fixed_path))
-
-                    # Mutate path in run.sh and other potentially problematic files
-                    fid.write(f"sed -i 's/{to_replace}/{replacement}/' {fixed_path}/run.sh\n")
-                    fid.write(f"sed -i 's/{to_replace}/{replacement}/' {fixed_path}/config.yaml\n")
-
-                    # Body
-                    fid.write(self.dic_submission[self.run_on]["body"](fixed_path))
-
-                    # Tail
-                    fid.write(self.dic_submission[self.run_on]["tail"])
-
-                l_filenames.append(filename_node)
+                l_filenames.append(filename_sub)
         return l_filenames
 
+    # ! HOW TO HANDLE JOINED SUBMISSION ????
     def _write_sub_file(
-        self, filename, running_jobs, queuing_jobs, list_of_nodes, write_htc_job_flavour=False
+        self,
+        filename,
+        running_jobs,
+        queuing_jobs,
+        list_of_jobs,
+        l_context_jobs,
+        write_htc_job_flavour=False,
     ):
         # Get submission instructions
         str_head = self.dic_submission[self.run_on]["head"]
@@ -203,7 +193,7 @@ class ClusterSubmission:
         # Write the submission file
         with open(filename, "w") as fid:
             fid.write(str_head)
-            for node in list_of_nodes:
+            for node in list_of_jobs:
                 # Get path node
                 path_node = node.get_abs_path()
 
@@ -240,18 +230,21 @@ class ClusterSubmission:
         return [filename] if ok_to_submit else []
 
     def _write_sub_files(
-        self, filename, running_jobs, queuing_jobs, list_of_nodes, submission_type
+        self, filename, running_jobs, queuing_jobs, list_of_jobs, l_context_jobs, submission_type
     ):
         # Slurm docker is a peculiar case as one submission file must be created per job
         if submission_type == "slurm_docker":
-            return self._write_sub_files_slurm(filename, running_jobs, queuing_jobs, list_of_nodes)
+            return self._write_sub_files_slurm_docker(
+                filename, running_jobs, queuing_jobs, list_of_jobs, l_context_jobs
+            )
 
         else:
             return self._write_sub_file(
                 filename,
                 running_jobs,
                 queuing_jobs,
-                list_of_nodes,
+                list_of_jobs,
+                l_context_jobs,
                 write_htc_job_flavour=submission_type in ["htc", "htc_docker"],
             )
 
@@ -269,25 +262,33 @@ class ClusterSubmission:
         dic_submission_files = {}
         for submission_type, list_of_jobs in dic_jobs_to_submit.items():
             if len(list_of_jobs) > 0:
-                l_submission_filenames = self._write_sub_files(
-                    self.path_submission_file,
-                    running_jobs,
-                    queuing_jobs,
-                    list_of_jobs,
-                    submission_type,
-                )
+                # Get context for each job
                 l_context_jobs = []
                 for job in list_of_jobs:
                     # Get corresponding context for each job
                     l_keys = self.dic_all_jobs[job]["l_keys"]
                     l_context_jobs.append(nested_get(self.dic_tree, l_keys + ["context"]))
-                    
+
+                # Write submission files
+                l_submission_filenames = self._write_sub_files(
+                    self.path_submission_file,
+                    running_jobs,
+                    queuing_jobs,
+                    list_of_jobs,
+                    l_context_jobs,
+                    submission_type,
+                )
+
                 # Record submission files and context
-                dic_submission_files[submission_type] = (l_submission_filenames, l_context_jobs)
+                dic_submission_files[submission_type] = (
+                    list_of_jobs,
+                    l_submission_filenames,
+                    l_context_jobs,
+                )
 
         return dic_submission_files
 
-    def submit(self, l_submission_filenames, l_context_jobs, submission_type):
+    def submit(self, list_of_jobs, l_submission_filenames, l_context_jobs, submission_type):
         # Check that the submission file(s) is/are appropriate for the submission mode
         if len(l_submission_filenames) > 1 and submission_type != "slurm_docker":
             raise ValueError(
@@ -306,13 +307,33 @@ class ClusterSubmission:
         # Submit
         dic_id_to_job_temp = {}
         idx_submission = 0
-        for sub_filename in zip(l_submission_filenames):
+        for sub_filename, context in zip(l_submission_filenames, l_context_jobs):
             if submission_type == "local_pc":
                 os.system(self.dic_submission[submission_type](sub_filename).submit_command)
             else:
-                submit_command = self.dic_submission[submission_type](sub_filename, context).submit_command
-                elif submission_type == 'slurm_docker':
-                    
+                if submission_type in ["htc", "slurm"]:
+                    submit_command = self.dic_submission[submission_type](
+                        sub_filename, context
+                    ).submit_command
+                elif submission_type in ["htc_docker", "slurm_docker"]:
+                    # Path to singularity image
+                    if (
+                        "container_image" in self.dic_tree
+                        and self.dic_tree["container_image"] is not None
+                    ):
+                        self.path_image = self.dic_tree["container_image"]
+                    else:
+                        raise ValueError(
+                            "Error: container_image is not defined in the tree. Please define it"
+                            " in the config.yaml file."
+                        )
+
+                    submit_command = self.dic_submission[submission_type](
+                        sub_filename, context, self.path_image
+                    ).submit_command
+                else:
+                    raise ValueError(f"Error: {submission_type} is not a valid submission mode")
+
                 process = subprocess.run(
                     submit_command.split(" "),
                     capture_output=True,
@@ -325,17 +346,17 @@ class ClusterSubmission:
                     if "htc" in submission_type:
                         if "cluster" in line:
                             cluster_id = int(line.split("cluster ")[1][:-1])
-                            dic_id_to_job_temp[cluster_id] = l_jobs[idx_submission]
+                            dic_id_to_job_temp[cluster_id] = list_of_jobs[idx_submission]
                             idx_submission += 1
                     elif "slurm" in submission_type:
                         if "Submitted" in line:
                             job_id = int(line.split(" ")[3])
-                            dic_id_to_job_temp[job_id] = l_jobs[idx_submission]
+                            dic_id_to_job_temp[job_id] = list_of_jobs[idx_submission]
                             idx_submission += 1
 
         # Update and write the id-job file
         if dic_id_to_job_temp:
-            assert len(dic_id_to_job_temp) == len(l_jobs)
+            assert len(dic_id_to_job_temp) == len(list_of_jobs)
 
         # Merge with the previous id-job file
         dic_id_to_job = self.dic_id_to_job
@@ -352,7 +373,7 @@ class ClusterSubmission:
         running_jobs, queuing_jobs = self._get_state_jobs(verbose=True)
 
     def _get_local_jobs(self):
-        l_jobs = []
+        l_path_jobs = []
         # Warning, does not work at the moment in lxplus...
         for ps in psutil.pids():
             try:
@@ -364,11 +385,11 @@ class ClusterSubmission:
 
                 # Only get path after name of the study
                 job = job.split(self.study_name)[1]
-                l_jobs.append(f"{self.study_name}{job}/")
-        return l_jobs
+                l_path_jobs.append(f"{self.study_name}{job}/")
+        return l_path_jobs
 
     def _get_condor_jobs(self, status, force_query_individually=False):
-        l_jobs = []
+        l_path_jobs = []
         dic_status = {"running": 1, "queuing": 2}
         condor_output = subprocess.run(["condor_q"], capture_output=True).stdout.decode("utf-8")
 
@@ -386,7 +407,7 @@ class ClusterSubmission:
                 # Get path from dic_id_to_job if available
                 if self.dic_id_to_job is not None:
                     if jobid in self.dic_id_to_job:
-                        l_jobs.append(self.dic_id_to_job[jobid])
+                        l_path_jobs.append(self.dic_id_to_job[jobid])
                     elif first_missing_job:
                         print(
                             "Warning, some jobs are queuing/running and are not in the id-job"
@@ -408,7 +429,7 @@ class ClusterSubmission:
 
                     # Only get path after master_study
                     job = job.split(self.study_name)[1]
-                    l_jobs.append(f"{self.study_name}{job}")
+                    l_path_jobs.append(f"{self.study_name}{job}")
 
                 elif first_line:
                     print(
@@ -417,10 +438,10 @@ class ClusterSubmission:
                     )
                     first_line = False
 
-        return l_jobs
+        return l_path_jobs
 
     def _get_slurm_jobs(self, status, force_query_individually=False):
-        l_jobs = []
+        l_path_jobs = []
         dic_status = {"running": "RUNNING", "queuing": "PENDING"}
         username = (
             subprocess.run(["id", "-u", "-n"], capture_output=True).stdout.decode("utf-8").strip()
@@ -442,7 +463,7 @@ class ClusterSubmission:
             # Get path from dic_id_to_job if available
             if self.dic_id_to_job is not None:
                 if jobid in self.dic_id_to_job:
-                    l_jobs.append(self.dic_id_to_job[jobid])
+                    l_path_jobs.append(self.dic_id_to_job[jobid])
                 elif first_missing_job:
                     print(
                         "Warning, some jobs are queuing/running and are not in the id-job"
@@ -465,9 +486,9 @@ class ClusterSubmission:
                     if "run.sh" in job_details
                     else job_details.split("StdOut=")[1].split("output.txt")[0]
                 )
-                # Only get path after master_study
+                # Only get path after study_name
                 job = job.split(self.study_name)[1]
-                l_jobs.append(f"{self.study_name}{job}")
+                l_path_jobs.append(f"{self.study_name}{job}")
 
             elif first_line:
                 print(
@@ -476,24 +497,24 @@ class ClusterSubmission:
                 )
                 first_line = False
 
-        return l_jobs
+        return l_path_jobs
 
     def querying_jobs(
         self, check_local_pc: bool, check_htc: bool, check_slurm: bool, status="running"
     ):
         # sourcery skip: remove-redundant-if, remove-redundant-pass, swap-nested-ifs
-        l_jobs = []
+        l_path_jobs = []
         if check_local_pc:
             if status == "running":
-                l_jobs.extend(self._get_local_jobs())
+                l_path_jobs.extend(self._get_local_jobs())
             else:
                 # Always empty return as there is no queuing in local pc
                 pass
 
         if check_htc:
-            l_jobs.extend(self._get_condor_jobs(status))
+            l_path_jobs.extend(self._get_condor_jobs(status))
 
         if check_slurm:
-            l_jobs.extend(self._get_slurm_jobs(status))
+            l_path_jobs.extend(self._get_slurm_jobs(status))
 
-        return l_jobs
+        return l_path_jobs
