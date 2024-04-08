@@ -153,10 +153,10 @@ class StudySub:
             # Convert dic_to_submit_by_gen to contain all requested information
             l_jobs_to_submit = [job for dic_gen in dic_to_submit_by_gen.values() for job in dic_gen]
 
-            print(l_jobs_to_submit)
-            print(dic_all_jobs)
-            print(dic_to_submit_by_gen)
-            print(self.abs_path)
+            # print(l_jobs_to_submit)
+            # print(dic_all_jobs)
+            # print(dic_to_submit_by_gen)
+            # print(self.abs_path)
             path_submission_file = f"{self.abs_path}/submission/submission_file.sub"
             cluster_submission = ClusterSubmission(
                 self.study_name,
