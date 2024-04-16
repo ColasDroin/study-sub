@@ -165,11 +165,11 @@ class ClusterSubmission:
                     filename_sub, abs_path_job, context, self.dic_tree["container_image"], fix=fix
                 )
                 with open(filename_sub, "w") as fid:
-                    fid.write(Sub.head)
+                    fid.write(Sub.head + "\n")
                     if fix:
-                        fid.write(Sub.str_fixed_run)
-                    fid.write(Sub.body)
-                    fid.write(Sub.tail)
+                        fid.write(Sub.str_fixed_run + "\n")
+                    fid.write(Sub.body + "\n")
+                    fid.write(Sub.tail + "\n")
 
                 l_filenames.append(filename_sub)
         return l_filenames
@@ -206,6 +206,8 @@ class ClusterSubmission:
                 return self.dic_submission[submission_type](
                     sub_filename, abs_path_job, context, self.path_image
                 )
+        elif submission_type == "local":
+            return self.dic_submission[submission_type](sub_filename, abs_path_job)
         else:
             raise ValueError(f"Error: {submission_type} is not a valid submission mode")
 
@@ -227,6 +229,9 @@ class ClusterSubmission:
         # Flag to know if the file can be submitted (at least one job in it)
         ok_to_submit = False
 
+        # Create folder to the submission file if it does not exist
+        os.makedirs("/".join(sub_filename.split("/")[:-1]), exist_ok=True)
+
         # Write the submission file
         with open(sub_filename, "w") as fid:
             for idx, job in enumerate(list_of_jobs):
@@ -240,20 +245,20 @@ class ClusterSubmission:
 
                 # Take the first job as reference for head
                 if idx == 0:
-                    fid.write(Sub.head)
+                    fid.write(Sub.head + "\n")
 
                 # Test if job is running, queuing or completed
                 if self._test_job(job, path_job, running_jobs, queuing_jobs):
                     print(f'Writing submission command for node "{abs_path_job}"')
                     # Write instruction for submission
-                    fid.write(Sub.body)
+                    fid.write(Sub.body + "\n")
 
                     # Flag file
                     ok_to_submit = True
 
                 if idx == len(list_of_jobs) - 1:
                     # Tail instruction
-                    fid.write(Sub.tail)
+                    fid.write(Sub.tail + "\n")
 
         if not ok_to_submit:
             os.remove(sub_filename)
