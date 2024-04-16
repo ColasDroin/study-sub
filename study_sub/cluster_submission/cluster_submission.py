@@ -236,11 +236,11 @@ class ClusterSubmission:
         with open(sub_filename, "w") as fid:
             for idx, job in enumerate(list_of_jobs):
                 # Get corresponding path job (remove the python file name)
-                path_job, abs_path_job = self.return_abs_path_job(list_of_jobs[0])
+                path_job, abs_path_job = self.return_abs_path_job(job)
 
                 # Get Submission object
                 Sub = self.get_Sub(
-                    job, submission_type, sub_filename, abs_path_job, l_context_jobs[0]
+                    job, submission_type, sub_filename, abs_path_job, l_context_jobs[idx]
                 )
 
                 # Take the first job as reference for head
