@@ -54,7 +54,7 @@ def main(b: float, c: float, a: float, path_fact_a_bc: str) -> None:
 b = 10
 c = 4
 a = 2
-path_fact_a_bc = "../fact_a_bc.npy"
+path_fact_a_bc = "fact_a_bc.npy"
 
 
 # ==================================================================================================
