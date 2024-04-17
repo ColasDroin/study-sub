@@ -5,39 +5,43 @@ base:
     submission_type: local
     htc_flavor:
     status: finished
-    path_run: /Users/cdroin/Desktop/study-sub/example_study/study_dummy/base/run.sh
+    path_run: /Users/macbe16879/Desktop/study-sub/example_study/study_dummy/base/run.sh
   a_1.0_b_1:
     some_more_computations:
       file: study_dummy/base/a_1.0_b_1/some_more_computations.py
       context: cpu
       submission_type: local
       htc_flavor:
-      status: finished
-      path_run: /Users/cdroin/Desktop/study-sub/example_study/study_dummy/base/a_1.0_b_1/run.sh
+      status: to_submit
+      path_run: 
+        /Users/macbe16879/Desktop/study-sub/example_study/study_dummy/base/a_1.0_b_1/run.sh
   a_1.0_b_2:
     some_more_computations:
       file: study_dummy/base/a_1.0_b_2/some_more_computations.py
       context: cpu
       submission_type: local
-      status: finished
+      status: to_submit
       htc_flavor:
-      path_run: /Users/cdroin/Desktop/study-sub/example_study/study_dummy/base/a_1.0_b_2/run.sh
+      path_run: 
+        /Users/macbe16879/Desktop/study-sub/example_study/study_dummy/base/a_1.0_b_2/run.sh
   a_2.0_b_1:
     some_more_computations:
       file: study_dummy/base/a_2.0_b_1/some_more_computations.py
       context: cpu
       submission_type: local
-      status: finished
+      status: to_submit
       htc_flavor:
-      path_run: /Users/cdroin/Desktop/study-sub/example_study/study_dummy/base/a_2.0_b_1/run.sh
+      path_run: 
+        /Users/macbe16879/Desktop/study-sub/example_study/study_dummy/base/a_2.0_b_1/run.sh
   a_2.0_b_2:
     some_more_computations:
       file: study_dummy/base/a_2.0_b_2/some_more_computations.py
       context: cpu
       submission_type: local
-      status: finished
+      status: to_submit
       htc_flavor:
-      path_run: /Users/cdroin/Desktop/study-sub/example_study/study_dummy/base/a_2.0_b_2/run.sh
+      path_run: 
+        /Users/macbe16879/Desktop/study-sub/example_study/study_dummy/base/a_2.0_b_2/run.sh
 python_environment: /Users/cdroin/Desktop/study-sub/.venv/bin/activate
 container_image:
-absolute_path: /Users/cdroin/Desktop/study-sub/example_study
+absolute_path: /Users/macbe16879/Desktop/study-sub/example_study
