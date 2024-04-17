@@ -1,4 +1,5 @@
 # TODO NEXT
+- Need to debug submission on htc
 - Finish debug study_sub and cluster_submission.py. Clean code. 
 
 
