@@ -120,13 +120,6 @@ class StudySub:
             # Update the dict
             self.dic_tree = dic_tree
 
-    # def get_job_status(self: Self, l_keys: list[str], dic_tree: bool | None = None):
-    #     # Using dic_tree as an argument allows to avoid reloading it
-    #     if dic_tree is None:
-    #         dic_tree = self.dic_tree
-    #     # Return the job status
-    #     return nested_get(dic_tree, l_keys + ["status"])
-
     def submit(self: Self, one_generation_at_a_time: bool = False):
         dic_all_jobs = self.get_all_jobs()
 
@@ -153,7 +146,6 @@ class StudySub:
             # Convert dic_to_submit_by_gen to contain all requested information
             l_jobs_to_submit = [job for dic_gen in dic_to_submit_by_gen.values() for job in dic_gen]
 
-
             path_submission_file = (
                 f"{self.abs_path}/{self.study_name}/submission/submission_file.sub"
             )
@@ -173,6 +165,7 @@ class StudySub:
                 l_submission_filenames,
                 l_context_jobs,
             ) in dic_submission_files.items():
+                print("ICI", list_of_jobs, l_submission_filenames, l_context_jobs)
                 cluster_submission.submit(
                     list_of_jobs, l_submission_filenames, l_context_jobs, submission_type
                 )

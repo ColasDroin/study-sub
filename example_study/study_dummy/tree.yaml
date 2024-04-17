@@ -2,45 +2,46 @@ base:
   some_dummy_computations:
     file: study_dummy/base/some_dummy_computations.py
     context: cpu
-    submission_type: local
-    htc_flavor:
+    submission_type: htc
+    htc_flavor: espresso
     status: finished
     path_run: 
       /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base/run.sh
+    id_sub: 5820982
   a_1.0_b_1:
     some_more_computations:
       file: study_dummy/base/a_1.0_b_1/some_more_computations.py
       context: cpu
-      submission_type: local
-      htc_flavor:
-      status: finished
+      submission_type: htc
+      htc_flavor: espresso
+      status: to_submit
       path_run: 
         /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base/a_1.0_b_1/run.sh
   a_1.0_b_2:
     some_more_computations:
       file: study_dummy/base/a_1.0_b_2/some_more_computations.py
       context: cpu
-      submission_type: local
-      status: finished
-      htc_flavor:
+      submission_type: htc
+      status: to_submit
+      htc_flavor: espresso
       path_run: 
         /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base/a_1.0_b_2/run.sh
   a_2.0_b_1:
     some_more_computations:
       file: study_dummy/base/a_2.0_b_1/some_more_computations.py
       context: cpu
-      submission_type: local
-      status: finished
-      htc_flavor:
+      submission_type: htc
+      status: to_submit
+      htc_flavor: espresso
       path_run: 
         /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base/a_2.0_b_1/run.sh
   a_2.0_b_2:
     some_more_computations:
       file: study_dummy/base/a_2.0_b_2/some_more_computations.py
       context: cpu
-      submission_type: local
-      status: finished
-      htc_flavor:
+      submission_type: htc
+      status: to_submit
+      htc_flavor: espresso
       path_run: 
         /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base/a_2.0_b_2/run.sh
 python_environment: /afs/cern.ch/work/c/cdroin/private/study-sub/.venv/bin/activate

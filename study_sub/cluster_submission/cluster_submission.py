@@ -63,18 +63,17 @@ class ClusterSubmission:
         assert isinstance(dic_id_to_job, dict)
         # Ensure all ids are integers
         dic_id_to_job = {int(id_job): job for id_job, job in dic_id_to_job.items()}
+        dic_job_to_id = {job: int(id_job) for id_job, job in dic_id_to_job.items()}
 
         # Update the tree
         for job in self.l_jobs_to_submit:
             l_keys = self.dic_all_jobs[job]["l_keys"]
             subdic_job = nested_get(self.dic_tree, l_keys)
-            if "id_sub" in subdic_job and subdic_job["id_sub"] not in dic_id_to_job:
+            if "id_sub" in subdic_job and int(subdic_job["id_sub"]) not in dic_id_to_job:
                 del subdic_job["id_sub"]
-            elif "id_sub" not in subdic_job and subdic_job["id_sub"] in dic_id_to_job:
-                subdic_job["id_sub"] = dic_id_to_job[subdic_job["id_sub"]]
+            elif "id_sub" not in subdic_job and job in dic_job_to_id:
+                subdic_job["id_sub"] = dic_job_to_id[job]
             # Else all is consistent
-
-        # TODO WHEN DEBUGGING: Ensure that modifying subdic indeed modifies the dic_tree
 
     def _update_dic_id_to_job(self, running_jobs, queuing_jobs):
         # Look for jobs in the dictionnary that are not running or queuing anymore
@@ -386,6 +385,7 @@ class ClusterSubmission:
                     submit_command.split(" "),
                     capture_output=True,
                 )
+
                 output = process.stdout.decode("utf-8")
                 output_error = process.stderr.decode("utf-8")
                 if "ERROR" in output_error:
@@ -404,6 +404,8 @@ class ClusterSubmission:
 
         # Update and write the id-job file
         if dic_id_to_job_temp:
+            print(list_of_jobs)
+            print(dic_id_to_job_temp)
             assert len(dic_id_to_job_temp) == len(list_of_jobs)
 
         # Merge with the previous id-job file
