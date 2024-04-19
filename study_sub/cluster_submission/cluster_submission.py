@@ -120,6 +120,8 @@ class ClusterSubmission:
         return running_jobs, queuing_jobs
 
     def _test_job(self, job, path_job, running_jobs, queuing_jobs):
+        print("ICICIC", job, path_job, running_jobs, queuing_jobs)
+
         # Test if job is completed
         l_keys = self.dic_all_jobs[job]["l_keys"]
         completed = nested_get(self.dic_tree, l_keys + ["status"]) == "finished"
@@ -291,6 +293,8 @@ class ClusterSubmission:
 
     def write_sub_files(self):
         running_jobs, queuing_jobs = self._get_state_jobs(verbose=False)
+
+        print("ICII", running_jobs, queuing_jobs)
 
         # Make a dict of all jobs to submit depending on the submission type
         dic_jobs_to_submit = {key: [] for key in self.dic_submission.keys()}

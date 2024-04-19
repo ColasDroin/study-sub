@@ -2,23 +2,8 @@
 error  = error.txt
 output = output.txt
 log  = log.txt
-initialdir = /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base/a_1.0_b_1
-executable = /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base/a_1.0_b_1/run.sh
-request_GPUs = 0
-queue
-+JobFlavour  = espresso
-initialdir = /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base/a_1.0_b_2
-executable = /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base/a_1.0_b_2/run.sh
-request_GPUs = 0
-queue
-+JobFlavour  = espresso
-initialdir = /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base/a_2.0_b_1
-executable = /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base/a_2.0_b_1/run.sh
-request_GPUs = 0
-queue
-+JobFlavour  = espresso
-initialdir = /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base/a_2.0_b_2
-executable = /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base/a_2.0_b_2/run.sh
+initialdir = /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base
+executable = /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base/run.sh
 request_GPUs = 0
 queue
 +JobFlavour  = espresso
