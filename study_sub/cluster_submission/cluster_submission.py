@@ -359,9 +359,14 @@ class ClusterSubmission:
         # ! The first loop is actually only on l_submission_filenames, as there is 1 filename for many jobs
         # ! (except maybe for slurm docker)
         # ! Right now, everything is handled as if 1 submission file = 1 job
-        for job, sub_filename, context in zip(list_of_jobs, l_submission_filenames, l_context_jobs):
-            # Get corresponding path job (remove the python file name)
-            path_job, abs_path_job = self.return_abs_path_job(job)
+
+        # ! Need to rewrite the submission statement such that I don't need to provide a
+        # ! (wrong) path to the job, which makes no sense. Only the path the submission file
+        # for job, sub_filename, context in zip(list_of_jobs, l_submission_filenames, l_context_jobs):
+        for sub_filename in l_submission_filenames:
+            # Get corresponding path job for the reference job, i.e, first job of the list
+            # that will be submitted with the submission file
+            path_job, abs_path_job = self.return_abs_path_job(list_of_jobs[0])
 
             if submission_type == "local":
                 os.system(
