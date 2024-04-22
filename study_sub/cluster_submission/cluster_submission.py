@@ -43,49 +43,52 @@ class ClusterSubmission:
             "slurm_docker": SlurmDocker,
         }
 
-    # Getter for dic_id_to_job
+    # Getter for dic_id_to_path_job
     @property
-    def dic_id_to_job(self):
-        dic_id_to_job = {}
+    def dic_id_to_path_job(self):
+        dic_id_to_path_job = {}
         found_at_least_one = False
         for job in self.l_jobs_to_submit:
             l_keys = self.dic_all_jobs[job]["l_keys"]
             subdic_job = nested_get(self.dic_tree, l_keys)
             if "id_sub" in subdic_job:
-                dic_id_to_job[subdic_job["id_sub"]] = job
+                dic_id_to_path_job[subdic_job["id_sub"]] = self.return_abs_path_job(job)[0]
                 found_at_least_one = True
 
-        return dic_id_to_job if found_at_least_one else None
+        return dic_id_to_path_job if found_at_least_one else None
 
-    # Setter for dic_id_to_job
-    @dic_id_to_job.setter
-    def dic_id_to_job(self, dic_id_to_job):
-        assert isinstance(dic_id_to_job, dict)
+    # Setter for dic_id_to_path_job
+    @dic_id_to_path_job.setter
+    def dic_id_to_path_job(self, dic_id_to_path_job):
+        assert isinstance(dic_id_to_path_job, dict)
         # Ensure all ids are integers
-        dic_id_to_job = {int(id_job): job for id_job, job in dic_id_to_job.items()}
-        dic_job_to_id = {job: int(id_job) for id_job, job in dic_id_to_job.items()}
+        dic_id_to_path_job = {
+            int(id_job): path_job for id_job, path_job in dic_id_to_path_job.items()
+        }
+        dic_job_to_id = {path_job: int(id_job) for id_job, path_job in dic_id_to_path_job.items()}
 
         # Update the tree
         for job in self.l_jobs_to_submit:
+            path_job = self.return_abs_path_job(job)[0]
             l_keys = self.dic_all_jobs[job]["l_keys"]
             subdic_job = nested_get(self.dic_tree, l_keys)
-            if "id_sub" in subdic_job and int(subdic_job["id_sub"]) not in dic_id_to_job:
+            if "id_sub" in subdic_job and int(subdic_job["id_sub"]) not in dic_id_to_path_job:
                 del subdic_job["id_sub"]
-            elif "id_sub" not in subdic_job and job in dic_job_to_id:
-                subdic_job["id_sub"] = dic_job_to_id[job]
+            elif "id_sub" not in subdic_job and path_job in dic_job_to_id:
+                subdic_job["id_sub"] = dic_job_to_id[path_job]
             # Else all is consistent
 
-    def _update_dic_id_to_job(self, running_jobs, queuing_jobs):
+    def _update_dic_id_to_path_job(self, running_jobs, queuing_jobs):
         # Look for jobs in the dictionnary that are not running or queuing anymore
         set_current_jobs = set(running_jobs + queuing_jobs)
-        if self.dic_id_to_job is not None:
-            dic_id_to_job = self.dic_id_to_job
-            for id_job, job in self.dic_id_to_job.items():
+        if self.dic_id_to_path_job is not None:
+            dic_id_to_path_job = self.dic_id_to_path_job
+            for id_job, job in self.dic_id_to_path_job.items():
                 if job not in set_current_jobs:
-                    del dic_id_to_job[id_job]
+                    del dic_id_to_path_job[id_job]
 
-            # Update dic_id_to_job
-            self.dic_id_to_job = dic_id_to_job
+            # Update dic_id_to_path_job
+            self.dic_id_to_path_job = dic_id_to_path_job
 
     def check_submission_type(self):
         check_local = False
@@ -113,15 +116,13 @@ class ClusterSubmission:
         # Then query accordingly
         running_jobs = self.querying_jobs(check_local, check_htc, check_slurm, status="running")
         queuing_jobs = self.querying_jobs(check_local, check_htc, check_slurm, status="queuing")
-        self._update_dic_id_to_job(running_jobs, queuing_jobs)
+        self._update_dic_id_to_path_job(running_jobs, queuing_jobs)
         if verbose:
             print("Running: \n" + "\n".join(running_jobs))
             print("queuing: \n" + "\n".join(queuing_jobs))
         return running_jobs, queuing_jobs
 
     def _test_job(self, job, path_job, running_jobs, queuing_jobs):
-        print("ICICIC", job, path_job, running_jobs, queuing_jobs)
-
         # Test if job is completed
         l_keys = self.dic_all_jobs[job]["l_keys"]
         completed = nested_get(self.dic_tree, l_keys + ["status"]) == "finished"
@@ -294,8 +295,6 @@ class ClusterSubmission:
     def write_sub_files(self):
         running_jobs, queuing_jobs = self._get_state_jobs(verbose=False)
 
-        print("ICII", running_jobs, queuing_jobs)
-
         # Make a dict of all jobs to submit depending on the submission type
         dic_jobs_to_submit = {key: [] for key in self.dic_submission.keys()}
         for job in self.l_jobs_to_submit:
@@ -351,11 +350,11 @@ class ClusterSubmission:
             raise ValueError(f"Error: {submission_type} is not a valid submission mode")
 
         # Submit
-        dic_id_to_job_temp = {}
-        idx_submission = 0
+        dic_id_to_path_job_temp = {}
         for job, sub_filename, context in zip(list_of_jobs, l_submission_filenames, l_context_jobs):
             # Get corresponding path job (remove the python file name)
-            path_job, abs_path_job = self.return_abs_path_job(list_of_jobs[0])
+            # ! For debugging: maybe it should be self.return_abs_path_job(list_of_jobs[0])
+            path_job, abs_path_job = self.return_abs_path_job(job)
 
             if submission_type == "local":
                 os.system(
@@ -398,30 +397,25 @@ class ClusterSubmission:
                     if "htc" in submission_type:
                         if "cluster" in line:
                             cluster_id = int(line.split("cluster ")[1][:-1])
-                            dic_id_to_job_temp[cluster_id] = list_of_jobs[idx_submission]
-                            idx_submission += 1
+                            dic_id_to_path_job_temp[cluster_id] = path_job
                     elif "slurm" in submission_type:
                         if "Submitted" in line:
                             job_id = int(line.split(" ")[3])
-                            dic_id_to_job_temp[job_id] = list_of_jobs[idx_submission]
-                            idx_submission += 1
-
+                            dic_id_to_path_job_temp[job_id] = path_job
         # Update and write the id-job file
-        if dic_id_to_job_temp:
-            print(list_of_jobs)
-            print(dic_id_to_job_temp)
-            assert len(dic_id_to_job_temp) == len(list_of_jobs)
+        if dic_id_to_path_job_temp:
+            assert len(dic_id_to_path_job_temp) == len(list_of_jobs)
 
         # Merge with the previous id-job file
-        dic_id_to_job = self.dic_id_to_job
+        dic_id_to_path_job = self.dic_id_to_path_job
 
         # Update and write on disk
-        if dic_id_to_job is not None:
-            dic_id_to_job.update(dic_id_to_job_temp)
-            self.dic_id_to_job = dic_id_to_job
-        elif dic_id_to_job_temp:
-            dic_id_to_job = dic_id_to_job_temp
-            self.dic_id_to_job = dic_id_to_job
+        if dic_id_to_path_job is not None:
+            dic_id_to_path_job.update(dic_id_to_path_job_temp)
+            self.dic_id_to_path_job = dic_id_to_path_job
+        elif dic_id_to_path_job_temp:
+            dic_id_to_path_job = dic_id_to_path_job_temp
+            self.dic_id_to_path_job = dic_id_to_path_job
 
         print("Jobs status after submission:")
         running_jobs, queuing_jobs = self._get_state_jobs(verbose=True)
@@ -458,10 +452,10 @@ class ClusterSubmission:
 
             # If job is running/queuing, get the path to the job
             if condor_status[dic_status[status]] == "1":
-                # Get path from dic_id_to_job if available
-                if self.dic_id_to_job is not None:
-                    if jobid in self.dic_id_to_job:
-                        l_path_jobs.append(self.dic_id_to_job[jobid])
+                # Get path from dic_id_to_path_job if available
+                if self.dic_id_to_path_job is not None:
+                    if jobid in self.dic_id_to_path_job:
+                        l_path_jobs.append(self.dic_id_to_path_job[jobid])
                     elif first_missing_job:
                         print(
                             "Warning, some jobs are queuing/running and are not in the id-job"
@@ -514,10 +508,10 @@ class ClusterSubmission:
             jobid = int(l_split[0])
             slurm_status = l_split[4]  # R or PD  # noqa: F841
 
-            # Get path from dic_id_to_job if available
-            if self.dic_id_to_job is not None:
-                if jobid in self.dic_id_to_job:
-                    l_path_jobs.append(self.dic_id_to_job[jobid])
+            # Get path from dic_id_to_path_job if available
+            if self.dic_id_to_path_job is not None:
+                if jobid in self.dic_id_to_path_job:
+                    l_path_jobs.append(self.dic_id_to_path_job[jobid])
                 elif first_missing_job:
                     print(
                         "Warning, some jobs are queuing/running and are not in the id-job"
