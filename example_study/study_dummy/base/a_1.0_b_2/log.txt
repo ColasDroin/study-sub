@@ -1,2 +1,59 @@
 000 (5832169.000.000) 04/22 17:15:32 Job submitted from host: <188.185.71.83:9618?addrs=188.185.71.83-9618+[2001-1458-d00-7--100-34d]-9618&alias=bigbird18.cern.ch&noUDP&sock=schedd_1878_baf3>
 ...
+040 (5832169.000.000) 04/22 17:17:08 Started transferring input files
+	Transferring to host: <188.184.160.123:9618?addrs=188.184.160.123-9618+[2001-1458-301-48--100-75]-9618&alias=b9s09p1231.cern.ch&noUDP&sock=slot1_16_464120_46b2_103635>
+...
+040 (5832169.000.000) 04/22 17:17:08 Finished transferring input files
+...
+001 (5832169.000.000) 04/22 17:17:09 Job executing on host: <188.184.160.123:9618?addrs=188.184.160.123-9618+[2001-1458-301-48--100-75]-9618&alias=b9s09p1231.cern.ch&noUDP&sock=startd_464082_3ad3>
+...
+006 (5832169.000.000) 04/22 17:17:16 Image size of job updated: 71168
+	40  -  MemoryUsage of job (MB)
+	40700  -  ResidentSetSize of job (KB)
+...
+040 (5832169.000.000) 04/22 17:17:16 Started transferring output files
+...
+040 (5832169.000.000) 04/22 17:17:16 Finished transferring output files
+...
+005 (5832169.000.000) 04/22 17:17:16 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	0  -  Run Bytes Sent By Job
+	485  -  Run Bytes Received By Job
+	0  -  Total Bytes Sent By Job
+	485  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated 
+	   Cpus                 :        0        1         1 
+	   Disk (KB)            :       25        1   2938973 
+	   Memory (MB)          :       40     2000      2000 
+
+	Job terminated of its own accord at 2024-04-22T15:17:16Z.
+...
+000 (5832173.000.000) 04/22 17:18:05 Job submitted from host: <188.185.71.83:9618?addrs=188.185.71.83-9618+[2001-1458-d00-7--100-34d]-9618&alias=bigbird18.cern.ch&noUDP&sock=schedd_1878_baf3>
+...
+009 (5832173.000.000) 04/22 17:19:02 Job was aborted.
+	via condor_rm (by user cdroin)
+...
+000 (5832177.000.000) 04/22 17:21:25 Job submitted from host: <188.185.71.83:9618?addrs=188.185.71.83-9618+[2001-1458-d00-7--100-34d]-9618&alias=bigbird18.cern.ch&noUDP&sock=schedd_1878_baf3>
+...
+009 (5832177.000.000) 04/22 17:21:31 Job was aborted.
+	via condor_rm (by user cdroin)
+...
+000 (5832181.000.000) 04/22 17:22:09 Job submitted from host: <188.185.71.83:9618?addrs=188.185.71.83-9618+[2001-1458-d00-7--100-34d]-9618&alias=bigbird18.cern.ch&noUDP&sock=schedd_1878_baf3>
+...
+009 (5832181.000.000) 04/22 17:22:12 Job was aborted.
+	via condor_rm (by user cdroin)
+...
+000 (5832185.000.000) 04/22 17:23:54 Job submitted from host: <188.185.71.83:9618?addrs=188.185.71.83-9618+[2001-1458-d00-7--100-34d]-9618&alias=bigbird18.cern.ch&noUDP&sock=schedd_1878_baf3>
+...
+009 (5832185.000.000) 04/22 17:23:57 Job was aborted.
+	via condor_rm (by user cdroin)
+...
+000 (5832189.000.000) 04/22 17:26:20 Job submitted from host: <188.185.71.83:9618?addrs=188.185.71.83-9618+[2001-1458-d00-7--100-34d]-9618&alias=bigbird18.cern.ch&noUDP&sock=schedd_1878_baf3>
+...
+009 (5832189.000.000) 04/22 17:26:21 Job was aborted.
+	via condor_rm (by user cdroin)
+...

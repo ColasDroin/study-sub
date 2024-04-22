@@ -143,8 +143,10 @@ class ClusterSubmission:
         return False
 
     def return_abs_path_job(self, job):
+        print("JOB", job)
         # Get corresponding path job (remove the python file name)
         path_job = "/".join(job.split("/")[:-1]) + "/"
+        print("PATH JOB", path_job)
         abs_path_job = f"{self.abs_path_study}/{path_job}"
         return path_job, abs_path_job
 
@@ -351,9 +353,14 @@ class ClusterSubmission:
 
         # Submit
         dic_id_to_path_job_temp = {}
+        print("LIST OF JOBS", list_of_jobs)
+        print("SUB FILENAME", l_submission_filenames)
+        # ! Need to redo this function in a cleaner way
+        # ! The first loop is actually only on l_submission_filenames, as there is 1 filename for many jobs
+        # ! (except maybe for slurm docker)
+        # ! Right now, everything is handled as if 1 submission file = 1 job
         for job, sub_filename, context in zip(list_of_jobs, l_submission_filenames, l_context_jobs):
             # Get corresponding path job (remove the python file name)
-            # ! For debugging: maybe it should be self.return_abs_path_job(list_of_jobs[0])
             path_job, abs_path_job = self.return_abs_path_job(job)
 
             if submission_type == "local":
@@ -404,6 +411,8 @@ class ClusterSubmission:
                             dic_id_to_path_job_temp[job_id] = path_job
         # Update and write the id-job file
         if dic_id_to_path_job_temp:
+            print("1", dic_id_to_path_job_temp)
+            print("2", list_of_jobs)
             assert len(dic_id_to_path_job_temp) == len(list_of_jobs)
 
         # Merge with the previous id-job file
