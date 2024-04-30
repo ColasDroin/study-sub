@@ -143,23 +143,25 @@ class ClusterSubmission:
         return False
 
     def return_abs_path_job(self, job):
-        print("JOB", job)
         # Get corresponding path job (remove the python file name)
         path_job = "/".join(job.split("/")[:-1]) + "/"
-        print("PATH JOB", path_job)
         abs_path_job = f"{self.abs_path_study}/{path_job}"
         return path_job, abs_path_job
 
     def _write_sub_files_slurm_docker(
-        self, sub_filename, running_jobs, queuing_jobs, list_of_jobs, l_context_jobs
-    ):
+        self, sub_filename, running_jobs, queuing_jobs, list_of_jobs):
         l_filenames = []
-        for idx_job, (job, context) in enumerate(zip(list_of_jobs, l_context_jobs)):
+        list_of_jobs_updated = []
+        for idx_job, job in enumerate(list_of_jobs):
             path_job, abs_path_job = self.return_abs_path_job(job)
 
             # Test if job is running, queuing or completed
             if self._test_job(job, path_job, running_jobs, queuing_jobs):
                 filename_sub = f"{sub_filename.split('.sub')[0]}_{idx_job}.sub"
+
+                # Get job context
+                l_keys = self.dic_all_jobs[job]["l_keys"]
+                context = nested_get(self.dic_tree, l_keys + ["context"])
 
                 # Write the submission files
                 # ! Careful, I implemented a fix for path due to the temporary home recovery folder
@@ -176,7 +178,8 @@ class ClusterSubmission:
                     fid.write(Sub.tail + "\n")
 
                 l_filenames.append(filename_sub)
-        return l_filenames
+                list_of_jobs_updated.append(job)
+        return l_filenames, list_of_jobs_updated
 
     # ! Need to improve this function, it is ugly af
     def get_Sub(self, job, submission_type, sub_filename, abs_path_job, context):
@@ -221,53 +224,62 @@ class ClusterSubmission:
         running_jobs,
         queuing_jobs,
         list_of_jobs,
-        l_context_jobs,
         submission_type,
     ):
-        # Ensure only one context is being used for now
-        if len(set(l_context_jobs)) > 1:
-            raise ValueError(
-                "Error: For now, only one context per list of jobs can be used for submission"
-            )
 
         # Flag to know if the file can be submitted (at least one job in it)
         ok_to_submit = False
 
+        # Flat to know if the header has been written
+        header_written = False
+
         # Create folder to the submission file if it does not exist
         os.makedirs("/".join(sub_filename.split("/")[:-1]), exist_ok=True)
 
+        # Updated list of jobs (without unsubmitted jobs)
+        list_of_jobs_updated = []
+
         # Write the submission file
+        Sub = None
         with open(sub_filename, "w") as fid:
-            for idx, job in enumerate(list_of_jobs):
+            for job in list_of_jobs:
                 # Get corresponding path job (remove the python file name)
                 path_job, abs_path_job = self.return_abs_path_job(job)
 
-                # Get Submission object
-                Sub = self.get_Sub(
-                    job, submission_type, sub_filename, abs_path_job, l_context_jobs[idx]
-                )
-
-                # Take the first job as reference for head
-                if idx == 0:
-                    fid.write(Sub.head + "\n")
-
                 # Test if job is running, queuing or completed
                 if self._test_job(job, path_job, running_jobs, queuing_jobs):
-                    print(f'Writing submission command for node "{abs_path_job}"')
+                    print(f'Writing submission command for node "{abs_path_job}"')                
+
+                    # Get context
+                    l_keys = self.dic_all_jobs[job]["l_keys"]
+                    context = nested_get(self.dic_tree, l_keys + ["context"])
+
+                    # Get Submission object
+                    Sub = self.get_Sub(
+                        job, submission_type, sub_filename, abs_path_job, context
+                    )
+
+                    # Take the first job as reference for head
+                    if not header_written:
+                        fid.write(Sub.head + "\n")
+                        header_written = True
+
                     # Write instruction for submission
                     fid.write(Sub.body + "\n")
+                    
+                    # Append job to list_of_jobs_updated
+                    list_of_jobs_updated.append(job)
 
-                    # Flag file
-                    ok_to_submit = True
 
-                if idx == len(list_of_jobs) - 1:
-                    # Tail instruction
-                    fid.write(Sub.tail + "\n")
+            # Tail instruction
+            if Sub is not None:
+                fid.write(Sub.tail + "\n")
+                ok_to_submit = True
 
         if not ok_to_submit:
             os.remove(sub_filename)
 
-        return [sub_filename] if ok_to_submit else []
+        return ([sub_filename], list_of_jobs_updated) if ok_to_submit else ([], [])
 
     def _write_sub_files(
         self,
@@ -275,13 +287,12 @@ class ClusterSubmission:
         running_jobs,
         queuing_jobs,
         list_of_jobs,
-        l_context_jobs,
         submission_type,
     ):
         # Slurm docker is a peculiar case as one submission file must be created per job
         if submission_type == "slurm_docker":
             return self._write_sub_files_slurm_docker(
-                sub_filename, running_jobs, queuing_jobs, list_of_jobs, l_context_jobs
+                sub_filename, running_jobs, queuing_jobs, list_of_jobs
             )
 
         else:
@@ -290,7 +301,6 @@ class ClusterSubmission:
                 running_jobs,
                 queuing_jobs,
                 list_of_jobs,
-                l_context_jobs,
                 submission_type,
             )
 
@@ -308,28 +318,19 @@ class ClusterSubmission:
         dic_submission_files = {}
         for submission_type, list_of_jobs in dic_jobs_to_submit.items():
             if len(list_of_jobs) > 0:
-                # Get context for each job
-                l_context_jobs = []
-                for job in list_of_jobs:
-                    # Get corresponding context for each job
-                    l_keys = self.dic_all_jobs[job]["l_keys"]
-                    l_context_jobs.append(nested_get(self.dic_tree, l_keys + ["context"]))
-
                 # Write submission files
-                l_submission_filenames = self._write_sub_files(
+                l_submission_filenames, list_of_jobs_updated = self._write_sub_files(
                     self.path_submission_file,
                     running_jobs,
                     queuing_jobs,
                     list_of_jobs,
-                    l_context_jobs,
                     submission_type,
                 )
 
                 # Record submission files and context
                 dic_submission_files[submission_type] = (
-                    list_of_jobs,
+                    list_of_jobs_updated,
                     l_submission_filenames,
-                    l_context_jobs,
                 )
 
         return dic_submission_files
@@ -349,8 +350,6 @@ class ClusterSubmission:
 
         # Submit
         dic_id_to_path_job_temp = {}
-        print("LIST OF JOBS", list_of_jobs)
-        print("SUB FILENAME", l_submission_filenames)
         
         idx_submission = 0
         for sub_filename in l_submission_filenames:
@@ -388,8 +387,6 @@ class ClusterSubmission:
                             
         # Update and write the id-job file
         if dic_id_to_path_job_temp:
-            print("1", dic_id_to_path_job_temp)
-            print("2", list_of_jobs)
             assert len(dic_id_to_path_job_temp) == len(list_of_jobs)
 
         # Merge with the previous id-job file

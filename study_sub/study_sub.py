@@ -163,9 +163,7 @@ class StudySub:
             for submission_type, (
                 list_of_jobs,
                 l_submission_filenames,
-                l_context_jobs,
             ) in dic_submission_files.items():
-                print("ICI", list_of_jobs, l_submission_filenames, l_context_jobs)
                 cluster_submission.submit(
                     list_of_jobs, l_submission_filenames, submission_type
                 )

@@ -4,17 +4,16 @@ base:
     context: cpu
     submission_type: htc
     htc_flavor: espresso
-    status: to_submit
+    status: finished
     path_run: 
       /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base/run.sh
-    id_sub: 5855192
   a_1.0_b_1:
     some_more_computations:
       file: study_dummy/base/a_1.0_b_1/some_more_computations.py
       context: cpu
       submission_type: htc
       htc_flavor: espresso
-      status: to_submit
+      status: finished
       path_run: 
         /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base/a_1.0_b_1/run.sh
   a_1.0_b_2:
@@ -22,7 +21,7 @@ base:
       file: study_dummy/base/a_1.0_b_2/some_more_computations.py
       context: cpu
       submission_type: htc
-      status: to_submit
+      status: finished
       htc_flavor: espresso
       path_run: 
         /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base/a_1.0_b_2/run.sh
@@ -31,7 +30,7 @@ base:
       file: study_dummy/base/a_2.0_b_1/some_more_computations.py
       context: cpu
       submission_type: htc
-      status: to_submit
+      status: finished
       htc_flavor: espresso
       path_run: 
         /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base/a_2.0_b_1/run.sh
@@ -40,7 +39,7 @@ base:
       file: study_dummy/base/a_2.0_b_2/some_more_computations.py
       context: cpu
       submission_type: htc
-      status: to_submit
+      status: finished
       htc_flavor: espresso
       path_run: 
         /afs/cern.ch/work/c/cdroin/private/study-sub/example_study/study_dummy/base/a_2.0_b_2/run.sh
