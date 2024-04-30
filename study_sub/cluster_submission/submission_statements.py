@@ -29,7 +29,11 @@ class LocalPC(SubmissionStatement):
         self.head = "# Running on local pc"
         self.body = f"bash {self.path_job_folder}/run.sh &"
         self.tail = "# Local pc"
-        self.submit_command = f"bash {self.sub_filename}"
+        self.submit_command = self.get_submit_command(sub_filename)
+        
+    @staticmethod
+    def get_submit_command(sub_filename):
+        return f"bash {sub_filename}"
 
 
 class Slurm(SubmissionStatement):
@@ -39,7 +43,11 @@ class Slurm(SubmissionStatement):
         self.head = "# Running on SLURM "
         self.body = f"sbatch --ntasks=2 {self.slurm_queue_statement.split(' ')[1] if self.slurm_queue_statement != "" else self.slurm_queue_statement} --output=output.txt --error=error.txt --gres=gpu:{self.request_GPUs} {self.path_job_folder}/run.sh"
         self.tail = "# SLURM"
-        self.submit_command = f"bash {self.sub_filename}"
+        self.submit_command = self.get_submit_command(sub_filename)
+        
+    @staticmethod
+    def get_submit_command(self):
+        return f"bash {self.sub_filename}"
 
 
 class SlurmDocker(SubmissionStatement):
@@ -69,7 +77,11 @@ class SlurmDocker(SubmissionStatement):
         )
         self.body = f"singularity exec {path_image} {self.path_job_folder}/run.sh"
         self.tail = "# SLURM Docker"
-        self.submit_command = f"sbatch {self.sub_filename}"
+        self.submit_command = self.get_submit_command(sub_filename)
+        
+    @staticmethod
+    def get_submit_command(sub_filename):
+        return f"sbatch {sub_filename}"
 
 
 class HTC(SubmissionStatement):
@@ -90,7 +102,11 @@ class HTC(SubmissionStatement):
             + f"+JobFlavour  = {htc_flavor}"
         )
         self.tail = "# HTC"
-        self.submit_command = f"condor_submit {self.sub_filename}"
+        self.submit_command = self.get_submit_command(sub_filename)
+
+    @staticmethod
+    def get_submit_command(sub_filename):
+        return f"condor_submit {sub_filename}"
 
 
 class HTCDocker(SubmissionStatement):
@@ -114,4 +130,8 @@ class HTCDocker(SubmissionStatement):
             + f"+JobFlavour  = {htc_flavor}"
         )
         self.tail = "# HTC Docker"
-        self.submit_command = f"condor_submit {self.sub_filename}"
+        self.submit_command = self.get_submit_command(sub_filename)
+        
+    @staticmethod
+    def get_submit_command(sub_filename):
+        return f"condor_submit {sub_filename}"

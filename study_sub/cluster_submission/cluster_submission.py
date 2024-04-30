@@ -335,7 +335,7 @@ class ClusterSubmission:
         return dic_submission_files
 
     # ! Need to clean this function
-    def submit(self, list_of_jobs, l_submission_filenames, l_context_jobs, submission_type):
+    def submit(self, list_of_jobs, l_submission_filenames, submission_type):
         # Check that the submission file(s) is/are appropriate for the submission mode
         if len(l_submission_filenames) > 1 and submission_type != "slurm_docker":
             raise ValueError(
@@ -347,52 +347,21 @@ class ClusterSubmission:
         if len(l_submission_filenames) == 0:
             print("No job being submitted.")
 
-        # Check that the submission type is valid
-        if submission_type not in self.dic_submission:
-            raise ValueError(f"Error: {submission_type} is not a valid submission mode")
-
         # Submit
         dic_id_to_path_job_temp = {}
         print("LIST OF JOBS", list_of_jobs)
         print("SUB FILENAME", l_submission_filenames)
-        # ! Need to redo this function in a cleaner way
-        # ! The first loop is actually only on l_submission_filenames, as there is 1 filename for many jobs
-        # ! (except maybe for slurm docker)
-        # ! Right now, everything is handled as if 1 submission file = 1 job
-
-        # ! Need to rewrite the submission statement such that I don't need to provide a
-        # ! (wrong) path to the job, which makes no sense. Only the path the submission file
-        # for job, sub_filename, context in zip(list_of_jobs, l_submission_filenames, l_context_jobs):
+        
+        idx_submission = 0
         for sub_filename in l_submission_filenames:
-            # Get corresponding path job for the reference job, i.e, first job of the list
-            # that will be submitted with the submission file
-            path_job, abs_path_job = self.return_abs_path_job(list_of_jobs[0])
-
+            
             if submission_type == "local":
                 os.system(
-                    self.dic_submission[submission_type](sub_filename, abs_path_job).submit_command
+                    self.dic_submission[submission_type].get_submit_command(sub_filename)
                 )
             else:
-                if submission_type in ["htc", "slurm"]:
-                    submit_command = self.dic_submission[submission_type](
-                        sub_filename, abs_path_job, context
-                    ).submit_command
-                elif submission_type in ["htc_docker", "slurm_docker"]:
-                    # Path to singularity image
-                    if (
-                        "container_image" in self.dic_tree
-                        and self.dic_tree["container_image"] is not None
-                    ):
-                        self.path_image = self.dic_tree["container_image"]
-                    else:
-                        raise ValueError(
-                            "Error: container_image is not defined in the tree. Please define it"
-                            " in the config.yaml file."
-                        )
-
-                    submit_command = self.dic_submission[submission_type](
-                        sub_filename, abs_path_job, context, self.path_image
-                    ).submit_command
+                if submission_type in ["htc", "slurm", "htc_docker", "slurm_docker"]:
+                    submit_command = self.dic_submission[submission_type].get_submit_command(sub_filename)
                 else:
                     raise ValueError(f"Error: {submission_type} is not a valid submission mode")
 
@@ -409,11 +378,14 @@ class ClusterSubmission:
                     if "htc" in submission_type:
                         if "cluster" in line:
                             cluster_id = int(line.split("cluster ")[1][:-1])
-                            dic_id_to_path_job_temp[cluster_id] = path_job
+                            dic_id_to_path_job_temp[cluster_id] = self.return_abs_path_job(list_of_jobs[idx_submission])[0]
+                            idx_submission += 1
                     elif "slurm" in submission_type:
                         if "Submitted" in line:
                             job_id = int(line.split(" ")[3])
-                            dic_id_to_path_job_temp[job_id] = path_job
+                            dic_id_to_path_job_temp[job_id] = self.return_abs_path_job(list_of_jobs[idx_submission])[0]
+                            idx_submission += 1
+                            
         # Update and write the id-job file
         if dic_id_to_path_job_temp:
             print("1", dic_id_to_path_job_temp)
