@@ -52,7 +52,7 @@ class ClusterSubmission:
             l_keys = self.dic_all_jobs[job]["l_keys"]
             subdic_job = nested_get(self.dic_tree, l_keys)
             if "id_sub" in subdic_job:
-                dic_id_to_path_job[subdic_job["id_sub"]] = self.return_abs_path_job(job)[0]
+                dic_id_to_path_job[subdic_job["id_sub"]] = self._return_abs_path_job(job)[0]
                 found_at_least_one = True
 
         return dic_id_to_path_job if found_at_least_one else None
@@ -69,7 +69,7 @@ class ClusterSubmission:
 
         # Update the tree
         for job in self.l_jobs_to_submit:
-            path_job = self.return_abs_path_job(job)[0]
+            path_job = self._return_abs_path_job(job)[0]
             l_keys = self.dic_all_jobs[job]["l_keys"]
             subdic_job = nested_get(self.dic_tree, l_keys)
             if "id_sub" in subdic_job and int(subdic_job["id_sub"]) not in dic_id_to_path_job:
@@ -90,7 +90,7 @@ class ClusterSubmission:
             # Update dic_id_to_path_job
             self.dic_id_to_path_job = dic_id_to_path_job
 
-    def check_submission_type(self):
+    def _check_submission_type(self):
         check_local = False
         check_htc = False
         check_slurm = False
@@ -111,7 +111,7 @@ class ClusterSubmission:
 
     def _get_state_jobs(self, verbose=True):
         # First check whether the jobs are submitted on local, htc or slurm
-        check_local, check_htc, check_slurm = self.check_submission_type()
+        check_local, check_htc, check_slurm = self._check_submission_type()
 
         # Then query accordingly
         running_jobs = self.querying_jobs(check_local, check_htc, check_slurm, status="running")
@@ -142,11 +142,11 @@ class ClusterSubmission:
             return True
         return False
 
-    def return_htc_flavour(self, job):
+    def _return_htc_flavour(self, job):
         l_keys = self.dic_all_jobs[job]["l_keys"]
         return nested_get(self.dic_tree, l_keys + ["htc_flavor"])
 
-    def return_abs_path_job(self, job):
+    def _return_abs_path_job(self, job):
         # Get corresponding path job (remove the python file name)
         path_job = "/".join(job.split("/")[:-1]) + "/"
         abs_path_job = f"{self.abs_path_study}/{path_job}"
@@ -156,7 +156,7 @@ class ClusterSubmission:
         l_filenames = []
         list_of_jobs_updated = []
         for idx_job, job in enumerate(list_of_jobs):
-            path_job, abs_path_job = self.return_abs_path_job(job)
+            path_job, abs_path_job = self._return_abs_path_job(job)
 
             # Test if job is running, queuing or completed
             if self._test_job(job, path_job, running_jobs, queuing_jobs):
@@ -184,13 +184,13 @@ class ClusterSubmission:
                 list_of_jobs_updated.append(job)
         return l_filenames, list_of_jobs_updated
 
-    def get_Sub(self, job, submission_type, sub_filename, abs_path_job, context):
+    def _get_Sub(self, job, submission_type, sub_filename, abs_path_job, context):
         match submission_type:
             case "slurm":
                 return self.dic_submission[submission_type](sub_filename, abs_path_job, context)
             case "htc":
                 return self.dic_submission[submission_type](
-                    sub_filename, abs_path_job, context, self.return_htc_flavour(job)
+                    sub_filename, abs_path_job, context, self._return_htc_flavour(job)
                 )
             case w if w in ["htc_docker", "slurm_docker"]:
                 # Path to singularity image
@@ -211,7 +211,7 @@ class ClusterSubmission:
                         abs_path_job,
                         context,
                         self.path_image,
-                        self.return_htc_flavour(job),
+                        self._return_htc_flavour(job),
                     )
                 else:
                     return self.dic_submission[submission_type](
@@ -247,7 +247,7 @@ class ClusterSubmission:
         with open(sub_filename, "w") as fid:
             for job in list_of_jobs:
                 # Get corresponding path job (remove the python file name)
-                path_job, abs_path_job = self.return_abs_path_job(job)
+                path_job, abs_path_job = self._return_abs_path_job(job)
 
                 # Test if job is running, queuing or completed
                 if self._test_job(job, path_job, running_jobs, queuing_jobs):
@@ -258,7 +258,7 @@ class ClusterSubmission:
                     context = nested_get(self.dic_tree, l_keys + ["context"])
 
                     # Get Submission object
-                    Sub = self.get_Sub(job, submission_type, sub_filename, abs_path_job, context)
+                    Sub = self._get_Sub(job, submission_type, sub_filename, abs_path_job, context)
 
                     # Take the first job as reference for head
                     if not header_written:
@@ -356,14 +356,14 @@ class ClusterSubmission:
             if "htc" in submission_type:
                 if "cluster" in line:
                     cluster_id = int(line.split("cluster ")[1][:-1])
-                    dic_id_to_path_job_temp[cluster_id] = self.return_abs_path_job(
+                    dic_id_to_path_job_temp[cluster_id] = self._return_abs_path_job(
                         list_of_jobs[idx_submission]
                     )[0]
                     idx_submission += 1
             elif "slurm" in submission_type:
                 if "Submitted" in line:
                     job_id = int(line.split(" ")[3])
-                    dic_id_to_path_job_temp[job_id] = self.return_abs_path_job(
+                    dic_id_to_path_job_temp[job_id] = self._return_abs_path_job(
                         list_of_jobs[idx_submission]
                     )[0]
                     idx_submission += 1
