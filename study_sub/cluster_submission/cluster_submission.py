@@ -142,14 +142,17 @@ class ClusterSubmission:
             return True
         return False
 
+    def return_htc_flavour(self, job):
+        l_keys = self.dic_all_jobs[job]["l_keys"]
+        return nested_get(self.dic_tree, l_keys + ["htc_flavor"])
+
     def return_abs_path_job(self, job):
         # Get corresponding path job (remove the python file name)
         path_job = "/".join(job.split("/")[:-1]) + "/"
         abs_path_job = f"{self.abs_path_study}/{path_job}"
         return path_job, abs_path_job
 
-    def _write_sub_files_slurm_docker(
-        self, sub_filename, running_jobs, queuing_jobs, list_of_jobs):
+    def _write_sub_files_slurm_docker(self, sub_filename, running_jobs, queuing_jobs, list_of_jobs):
         l_filenames = []
         list_of_jobs_updated = []
         for idx_job, job in enumerate(list_of_jobs):
@@ -181,42 +184,43 @@ class ClusterSubmission:
                 list_of_jobs_updated.append(job)
         return l_filenames, list_of_jobs_updated
 
-    # ! Need to improve this function, it is ugly af
     def get_Sub(self, job, submission_type, sub_filename, abs_path_job, context):
-        if submission_type == "slurm":
-            return self.dic_submission[submission_type](sub_filename, abs_path_job, context)
-        elif submission_type == "htc":
-            htc_flavor = nested_get(
-                self.dic_tree, self.dic_all_jobs[job]["l_keys"] + ["htc_flavor"]
-            )
-            return self.dic_submission[submission_type](
-                sub_filename, abs_path_job, context, htc_flavor
-            )
-        elif submission_type in ["htc_docker", "slurm_docker"]:
-            # Path to singularity image
-            if "container_image" in self.dic_tree and self.dic_tree["container_image"] is not None:
-                self.path_image = self.dic_tree["container_image"]
-            else:
-                raise ValueError(
-                    "Error: container_image is not defined in the tree. Please define it in the"
-                    " config.yaml file."
+        match submission_type:
+            case "slurm":
+                return self.dic_submission[submission_type](sub_filename, abs_path_job, context)
+            case "htc":
+                return self.dic_submission[submission_type](
+                    sub_filename, abs_path_job, context, self.return_htc_flavour(job)
                 )
+            case w if w in ["htc_docker", "slurm_docker"]:
+                # Path to singularity image
+                if (
+                    "container_image" in self.dic_tree
+                    and self.dic_tree["container_image"] is not None
+                ):
+                    self.path_image = self.dic_tree["container_image"]
+                else:
+                    raise ValueError(
+                        "Error: container_image is not defined in the tree. Please define it in the"
+                        " config.yaml file."
+                    )
 
-            if submission_type == "htc_docker":
-                htc_flavor = nested_get(
-                    self.dic_tree, self.dic_all_jobs[job]["l_keys"] + ["htc_flavor"]
-                )
-                return self.dic_submission[submission_type](
-                    sub_filename, abs_path_job, context, self.path_image, htc_flavor
-                )
-            else:
-                return self.dic_submission[submission_type](
-                    sub_filename, abs_path_job, context, self.path_image
-                )
-        elif submission_type == "local":
-            return self.dic_submission[submission_type](sub_filename, abs_path_job)
-        else:
-            raise ValueError(f"Error: {submission_type} is not a valid submission mode")
+                if submission_type == "htc_docker":
+                    return self.dic_submission[submission_type](
+                        sub_filename,
+                        abs_path_job,
+                        context,
+                        self.path_image,
+                        self.return_htc_flavour(job),
+                    )
+                else:
+                    return self.dic_submission[submission_type](
+                        sub_filename, abs_path_job, context, self.path_image
+                    )
+            case "local":
+                return self.dic_submission[submission_type](sub_filename, abs_path_job)
+            case _:
+                raise ValueError(f"Error: {submission_type} is not a valid submission mode")
 
     def _write_sub_file(
         self,
@@ -226,7 +230,6 @@ class ClusterSubmission:
         list_of_jobs,
         submission_type,
     ):
-
         # Flag to know if the file can be submitted (at least one job in it)
         ok_to_submit = False
 
@@ -248,16 +251,14 @@ class ClusterSubmission:
 
                 # Test if job is running, queuing or completed
                 if self._test_job(job, path_job, running_jobs, queuing_jobs):
-                    print(f'Writing submission command for node "{abs_path_job}"')                
+                    print(f'Writing submission command for node "{abs_path_job}"')
 
                     # Get context
                     l_keys = self.dic_all_jobs[job]["l_keys"]
                     context = nested_get(self.dic_tree, l_keys + ["context"])
 
                     # Get Submission object
-                    Sub = self.get_Sub(
-                        job, submission_type, sub_filename, abs_path_job, context
-                    )
+                    Sub = self.get_Sub(job, submission_type, sub_filename, abs_path_job, context)
 
                     # Take the first job as reference for head
                     if not header_written:
@@ -266,10 +267,9 @@ class ClusterSubmission:
 
                     # Write instruction for submission
                     fid.write(Sub.body + "\n")
-                    
+
                     # Append job to list_of_jobs_updated
                     list_of_jobs_updated.append(job)
-
 
             # Tail instruction
             if Sub is not None:
@@ -335,7 +335,41 @@ class ClusterSubmission:
 
         return dic_submission_files
 
-    # ! Need to clean this function
+    def _update_job_status_from_hpc_output(
+        self,
+        submit_command,
+        submission_type,
+        dic_id_to_path_job_temp,
+        list_of_jobs,
+        idx_submission=0,
+    ):
+        process = subprocess.run(
+            submit_command.split(" "),
+            capture_output=True,
+        )
+
+        output = process.stdout.decode("utf-8")
+        output_error = process.stderr.decode("utf-8")
+        if "ERROR" in output_error:
+            raise RuntimeError(f"Error in submission: {output}")
+        for line in output.split("\n"):
+            if "htc" in submission_type:
+                if "cluster" in line:
+                    cluster_id = int(line.split("cluster ")[1][:-1])
+                    dic_id_to_path_job_temp[cluster_id] = self.return_abs_path_job(
+                        list_of_jobs[idx_submission]
+                    )[0]
+                    idx_submission += 1
+            elif "slurm" in submission_type:
+                if "Submitted" in line:
+                    job_id = int(line.split(" ")[3])
+                    dic_id_to_path_job_temp[job_id] = self.return_abs_path_job(
+                        list_of_jobs[idx_submission]
+                    )[0]
+                    idx_submission += 1
+
+        return dic_id_to_path_job_temp, idx_submission
+
     def submit(self, list_of_jobs, l_submission_filenames, submission_type):
         # Check that the submission file(s) is/are appropriate for the submission mode
         if len(l_submission_filenames) > 1 and submission_type != "slurm_docker":
@@ -350,41 +384,24 @@ class ClusterSubmission:
 
         # Submit
         dic_id_to_path_job_temp = {}
-        
         idx_submission = 0
         for sub_filename in l_submission_filenames:
-            
             if submission_type == "local":
-                os.system(
-                    self.dic_submission[submission_type].get_submit_command(sub_filename)
+                os.system(self.dic_submission[submission_type].get_submit_command(sub_filename))
+            elif submission_type in ["htc", "slurm", "htc_docker", "slurm_docker"]:
+                submit_command = self.dic_submission[submission_type].get_submit_command(
+                    sub_filename
+                )
+                dic_id_to_path_job_temp, idx_submission = self._update_job_status_from_hpc_output(
+                    submit_command,
+                    submission_type,
+                    dic_id_to_path_job_temp,
+                    list_of_jobs,
+                    idx_submission,
                 )
             else:
-                if submission_type in ["htc", "slurm", "htc_docker", "slurm_docker"]:
-                    submit_command = self.dic_submission[submission_type].get_submit_command(sub_filename)
-                else:
-                    raise ValueError(f"Error: {submission_type} is not a valid submission mode")
+                raise ValueError(f"Error: {submission_type} is not a valid submission mode")
 
-                process = subprocess.run(
-                    submit_command.split(" "),
-                    capture_output=True,
-                )
-
-                output = process.stdout.decode("utf-8")
-                output_error = process.stderr.decode("utf-8")
-                if "ERROR" in output_error:
-                    raise RuntimeError(f"Error in submission: {output}")
-                for line in output.split("\n"):
-                    if "htc" in submission_type:
-                        if "cluster" in line:
-                            cluster_id = int(line.split("cluster ")[1][:-1])
-                            dic_id_to_path_job_temp[cluster_id] = self.return_abs_path_job(list_of_jobs[idx_submission])[0]
-                            idx_submission += 1
-                    elif "slurm" in submission_type:
-                        if "Submitted" in line:
-                            job_id = int(line.split(" ")[3])
-                            dic_id_to_path_job_temp[job_id] = self.return_abs_path_job(list_of_jobs[idx_submission])[0]
-                            idx_submission += 1
-                            
         # Update and write the id-job file
         if dic_id_to_path_job_temp:
             assert len(dic_id_to_path_job_temp) == len(list_of_jobs)
