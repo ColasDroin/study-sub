@@ -5,5 +5,3 @@ Make the submit script more verbose, what remains to be submitted etc.
 Make the generate run recursive and not dependent on the generation
 
 Handle singularity and docker images
-
-Add rm statement at the end of sh run files -> Add a block to clean, it's way simpler and keep package separated from collider simulations

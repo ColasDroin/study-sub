@@ -1,19 +1,17 @@
 [tool.poetry]
 name = "study-sub"
-version = "0.3.0"
+version = "0.3.1"
 description = "A tool to programmatically submit parametric studies to HPC clusters."
 authors = ["Colas Droin <colasdroin@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-numpy = "^1.26.4"
-study-gen = "^0.3.0"
-filelock = "^3.13.1"
-rich = "^13.7.1"
+numpy = "^2.0.2"
+filelock = "^3.16.1"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^8.0.0"
+pytest = "^8.3.3"
 
 [build-system]
 requires = ["poetry-core"]
